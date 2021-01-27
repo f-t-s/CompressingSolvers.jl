@@ -1,25 +1,26 @@
 import NearestNeighbors.KDTree
+import StaticArrays.SVector
 
 # This file contains the definitions for nested partitions 
 
 # an element of a partition with coordinate center represented by PT
-struct Domain{PT::StaticVector{RT<:Real}}
+struct Domain{PT}
     # Centroid of partition. 
     center::PT 
 
-    # Number of elementary basis functions it contains, needed to compute the new centroids
-    n_subdomains::Int 
+    # The "weight" of the domain, which is use to compute orthogonalization of the basis functions and the centroids.
+    weight::eltype(PT)
 
     # The list of the children on the next finer scale.
     children::Vector{Domain{PT}}
 
     # an id to keep track of the partition elements
-    # Contains the "level" to which the domain belongs, as well as the id it has within this level.
-    id::NamedTuple{(:level, :index), Int, Int}
+    id::Int
 end
 
-function n_subdomains(t::Domain)
-    return t.n_subdomains
+
+function weight(t::Domain)
+    return t.weight
 end
 
 function children(t::Domain)
@@ -35,7 +36,7 @@ function id(t::Domain)
 end
 
 # Returns a list of all the subdomains of a given domain, recursively
-function subdomains(t::Domain{PT}) where PT<:AbstractVector
+function subdomains(t::Domain{PT}) where {PT<:AbstractVector}
     if iselementary(t::Domain)
         return [t]
     else 
@@ -50,20 +51,37 @@ end
 # construct a new domain from a list of domain on a finer scale
 function Domain(input_children::AbstractVector{Domain{PT}}, id) where {PT<:AbstractVector}
     out_center = zero(PT)
-    out_n_descendants = 0
+    out_weight = 0
     out_children = copy(input_children)
     for t in input_children
-        out_n_descendants += n_subdomains(t)
-        out_center += center(t) * n_subdomains(t)
+        out_weight += weight(t)
+        out_center += center(t) * weight(t)
     end
-    out_center /= out_n_descendants
-    return Domain{PT}(out_center, out_n_descendants, out_children, id)
+    out_center /= out_weight
+    return Domain{PT}(out_center, out_weight, out_children, id)
 end
 
 # construct an elementary domain from a coordinate
 function Domain(input_coordinates::PT, id) where {PT<:AbstractVector}
     return Domain{PT}(input_coordinates, 1, Vector{Domain{PT}}(undef, 0), id)
 end
+
+# construct a list of elementary domains from the columns of a matrix
+# can use dims keyword to instead construct them from rows of matrix.
+function array2domains(in::AbstractMatrix{<:Real}; dims=1) 
+    if dims == 2    
+        in = transpose(in)
+    elseif dims != 1 
+        error("Invalid keyword argument for dims")
+    end
+    d, N = size(in)
+    out = Vector{Domain{SVector{d, eltype(in)}}}(undef, N)
+    for k = 1 : N 
+        out[k] = Domain(SVector{d}(in[:, k]), k)
+    end
+    return out
+end
+
 
 # We define a domain as elementary if it does not have any children. Note that this is slightly different than demanding it to consist of a single coordinate domain
 function iselementary(t::Domain)
@@ -93,7 +111,7 @@ end
 # A function to cluster a list of points around centers chosen from among them, that are at least scale apart.
 # When creating basis functions, scale should be taken as the diameter of the support size of the input basis functions.
 # returns an array containing the indices of the centers, as well as an array of arrays which contain the clustering indices
-function cluster(centers::AbstractVector{StaticVector}, scale, tree_function)
+function cluster(centers::AbstractVector{SVector}, scale, tree_function)
     # List that keeps track whether we have already crossed of a given domain
     list = falses(length(centers))
     # aggregation centers
@@ -118,19 +136,16 @@ function cluster(centers::AbstractVector{StaticVector}, scale, tree_function)
     return aggregation_indices, construct_member_lists(memberships_abstract)
 end
 
-# Directly the new clustered nodes from an input set of clustered nodes.
+# Directly compute the new clustered nodes from an input set of clustered nodes.
 function cluster(domains::AbstractVector{Domain}, scale, tree_function)
     # Where do we start our id's?
     initial_id = maximum(getfield.(id.(domains), index)) + 1
-    # get level and make sure they are all the same
-    level = id(domains[1].level) + 1
-    @assert all(getfield.(id.(domains), level - 1))
 
     aggregation_centers, aggregation_memberships = cluster(center.(domains), scale, tree_function)
     aggregated_domains = Vector{eltype(domain)}(undef, length(aggregation)) 
 
     for k = 1 : length(aggregation_centers)
-        aggregated_domains[k] = Domain(domains[aggregation_memberships[k]], (index=initial_id + k; level))
+        aggregated_domains[k] = Domain(domains[aggregation_memberships[k]], initial_id + k)
     end
     return aggregated_domains
 end
@@ -148,11 +163,8 @@ function create_hierarchy(centers::AbstractVector{PT}, h, diams; tree_function=K
     # vector containing the scales of the different levels
     scales = h_min ./ (h .^ (q : -1 : 1))
     # function that the level to a 
-    function level(diam)
-        ceil(Int, log(h, diam / h_max) )
-    end 
     # We store the original domains that still need to be included into 
-    domains_remaining = Domain.(coords, [(level = level(diams[k]), id = k) for k = 1 : length(coords)])
+    domains_remaining = Domain.(coords, 1 : length(coords))
     # The domains that are passed on from the last level
     domains = Vector{Domain{PT}}(undef, 0)
     index = length(coord)
