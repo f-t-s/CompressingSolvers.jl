@@ -1,5 +1,8 @@
 import NearestNeighbors.KDTree
+import NearestNeighbors.inrange
+import NearestNeighbors.nn
 import StaticArrays.SVector
+import LinearAlgebra.norm
 
 # This file contains the definitions for nested partitions 
 
@@ -90,7 +93,7 @@ end
 
 function approximate_diameter(centers::AbstractVector{<:AbstractVector}) 
     mn = sum(centers) / length(centers)
-    return maximum(norm.(mn .- centers))
+    return maximum(norm.(repeat([mn], length(centers)) - centers))
 end
 
 
@@ -99,7 +102,7 @@ end
 # to 
 function construct_member_lists(memberships_abstract)
     member_lists = Vector{Vector{Int}}(undef, maximum(memberships_abstract))
-    for k = 1 : length
+    for k = 1 : length(member_lists)
         member_lists[k] = Vector{Int}(undef, 0)
     end
     for k = 1 : length(memberships_abstract)
@@ -111,7 +114,7 @@ end
 # A function to cluster a list of points around centers chosen from among them, that are at least scale apart.
 # When creating basis functions, scale should be taken as the diameter of the support size of the input basis functions.
 # returns an array containing the indices of the centers, as well as an array of arrays which contain the clustering indices
-function cluster(centers::AbstractVector{SVector}, scale, tree_function)
+function cluster(centers::AbstractVector{<:SVector}, scale, tree_function)
     # List that keeps track whether we have already crossed of a given domain
     list = falses(length(centers))
     # aggregation centers
@@ -130,19 +133,19 @@ function cluster(centers::AbstractVector{SVector}, scale, tree_function)
         end
     end
     # contains the membership of each element expressed as an integer between 1 and number_of_clusters
-    memberships_abstract = nn(tree_function(aggregation_centers), x)[1]
+    memberships_abstract = nn(tree_function(aggregation_centers), centers)[1]
 
     # returns the indices of the domaisn ussed as centers of clustering, as well as an array of arrays that contains the members of each cluster
     return aggregation_indices, construct_member_lists(memberships_abstract)
 end
 
 # Directly compute the new clustered nodes from an input set of clustered nodes.
-function cluster(domains::AbstractVector{Domain}, scale, tree_function)
+function cluster(domains::AbstractVector{<:Domain}, scale, tree_function)
     # Where do we start our id's?
-    initial_id = maximum(getfield.(id.(domains), index)) + 1
+    initial_id = maximum(id.(domains)) + 1
 
     aggregation_centers, aggregation_memberships = cluster(center.(domains), scale, tree_function)
-    aggregated_domains = Vector{eltype(domain)}(undef, length(aggregation)) 
+    aggregated_domains = Vector{eltype(domains)}(undef, length(aggregation_centers)) 
 
     for k = 1 : length(aggregation_centers)
         aggregated_domains[k] = Domain(domains[aggregation_memberships[k]], initial_id + k)
@@ -164,16 +167,43 @@ function create_hierarchy(centers::AbstractVector{PT}, h, diams; tree_function=K
     scales = h_min ./ (h .^ (q : -1 : 1))
     # function that the level to a 
     # We store the original domains that still need to be included into 
-    domains_remaining = Domain.(coords, 1 : length(coords))
+    domains_remaining = Domain.(centers, 1 : length(centers))
     # The domains that are passed on from the last level
     domains = Vector{Domain{PT}}(undef, 0)
-    index = length(coord)
-    for k = q : -1 : 2
+    # Index should figure itself out
+    # index = length(centers)
+    for k = q : -1 : 1
         # We split the raw domains into domains that are included at the present scale and 
-        domains_at_scale = domains_remaining[scales[k] .<= diams .< (scales[k] / h)]
-        domains_remaining = domains_remaining[!(scales[k] .<= diams .< (scales[k] / h))]
-        domains = cluster(vcat(domains, domains_at_scale), scale[k] / h, tree_function)
+        domains_at_scale = domains_remaining[findall((diams[id.(domains_remaining)] .< (scales[k] / h)))]
+        domains_remaining = domains_remaining[findall(.!(diams[id.(domains_remaining)] .< (scales[k] / h)))]
+        domains = cluster(vcat(domains, domains_at_scale), scales[k] / h, tree_function)
     end
+    return domains 
+end
+
+# A function that takes as input the coarsest level of a hierarchical 
+# domain decomposition 
+function gather_hierarchy(coarsest::AbstractVector{<:Domain})
+    out = Vector{Vector{eltype(coarsest)}}(undef, 0)
+
+    # recursive function provided with a domain and its input level
+    function recurse!(out, in, k::Int)
+        # possible increase length of out array
+        if length(out) < k
+            @assert length(out) == k - 1
+            push!(out, Vector{eltype(coarsest)}(undef, 0))
+        end 
+        push!(out[k], in)
+        for child in children(in) 
+            recurse!(out, child, k + 1)
+        end
+    end
+
+    # Initialize recursioin, assigning level 1 to the parent domain
+    for coarse_domain in coarsest
+        recurse!(out, coarse_domain, 1)
+    end
+    return out
 end
 
 # # unclear what this is doing :-D
