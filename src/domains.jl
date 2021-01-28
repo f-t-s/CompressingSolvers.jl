@@ -96,7 +96,21 @@ function approximate_diameter(centers::AbstractVector{<:AbstractVector})
     return maximum(norm.(repeat([mn], length(centers)) - centers))
 end
 
+# Takes in a vector of domains and returns a list of all the elementary domains that are among its descendants
+function gather_descendants(domains::AbstractVector{<:Domain})
+    out = Vector{eltype(domains)}(undef, 0)
+    for domain in domains
+        if iselementary(domain) 
+            push!(out, domain)
+        else
+            append!(out, gather_descendants(children(domain)))
+        end
+    end
+    return out
+end
 
+
+# Helper functions for clustering
 # The Vector memberships contains elements of ids
 # memberships[i] = j signifies that the i-th member is associated 
 # to 
@@ -158,7 +172,7 @@ end
 # centeres contains the point location of the degrees of freedom
 # h is the ratio between subsequenct scales,
 # centers contains the centers of the degrees of freedom
-function create_hierarchy(centers::AbstractVector{PT}, h, diams; tree_function=KDTree, h_min = minimum(diams), h_max = max(approximate_diameter(centers), maximum(diams))) where PT <: AbstractVector
+function create_hierarchy(input_domains::AbstractVector{<:Domain}, h, diams; tree_function=KDTree, h_min = minimum(diams), h_max = max(approximate_diameter(center.(input_domains)), maximum(diams)))
     # the input basis functions should be ordered from coarse to fine, meaning that dims should be sorted in decreasing order.
     @assert issorted(diams, rev=true)
     # Compute the number of levels needed in total
@@ -167,9 +181,9 @@ function create_hierarchy(centers::AbstractVector{PT}, h, diams; tree_function=K
     scales = h_min ./ (h .^ (q : -1 : 1))
     # function that the level to a 
     # We store the original domains that still need to be included into 
-    domains_remaining = Domain.(centers, 1 : length(centers))
+    domains_remaining = copy(input_domains)
     # The domains that are passed on from the last level
-    domains = Vector{Domain{PT}}(undef, 0)
+    domains = Vector{eltype(input_domains)}(undef, 0)
     # Index should figure itself out
     # index = length(centers)
     for k = q : -1 : 1
@@ -206,7 +220,7 @@ function gather_hierarchy(coarsest::AbstractVector{<:Domain})
     return out
 end
 
-# # unclear what this is doing :-D
+# # unclear what this is doing :D
 # function find_ranges(a::AbstractVector{<:Integer})
 #     @assert issorted(a); @assert a[1] == one(eltype(a))
 #     n = a[end]
