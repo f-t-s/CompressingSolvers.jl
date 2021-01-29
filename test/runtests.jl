@@ -22,10 +22,14 @@ using Plots
         for k = 1 : length(all_domains)
             sorted_truth = sort(domain_vector, by=CompressingSolvers.id)
             sorted_recovered = sort(CompressingSolvers.gather_descendants(all_domains[k]), by=CompressingSolvers.id)
-            
+
+            # make sure the weights stay the same
+            @test sum(CompressingSolvers.weight.(all_domains[k])) == sum(CompressingSolvers.weight.(domain_vector))
+
             # Test if the partition, on each level, produces the same set of elements
             @test sort(domain_vector, by=CompressingSolvers.id) == sort(CompressingSolvers.gather_descendants(all_domains[k]), by=CompressingSolvers.id)
         end
+        CompressingSolvers.plot_domains(all_domains[1]; xlims=(0.0, 2.0), ylims=(0.0,2.0))
     end
     @testset "domain.jl in 3d" begin
         Δx = 0.06

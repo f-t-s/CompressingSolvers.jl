@@ -3,6 +3,8 @@ import NearestNeighbors.inrange
 import NearestNeighbors.nn
 import StaticArrays.SVector
 import LinearAlgebra.norm
+import Plots.scatter!
+import Plots.plot
 
 # This file contains the definitions for nested partitions 
 
@@ -176,9 +178,9 @@ function create_hierarchy(input_domains::AbstractVector{<:Domain}, h, diams; tre
     # the input basis functions should be ordered from coarse to fine, meaning that dims should be sorted in decreasing order.
     @assert issorted(diams, rev=true)
     # Compute the number of levels needed in total
-    q = ceil(Int, log(h, h_min / h_max))
+    q = ceil(Int, log(h, h_min / h_max)) + 1
     # vector containing the scales of the different levels
-    scales = h_min ./ (h .^ (q : -1 : 1))
+    @show scales = h_max .* (h .^ (0 : (q - 1)))
     # function that the level to a 
     # We store the original domains that still need to be included into 
     domains_remaining = copy(input_domains)
@@ -218,6 +220,21 @@ function gather_hierarchy(coarsest::AbstractVector{<:Domain})
         recurse!(out, coarse_domain, 1)
     end
     return out
+end
+
+function plot_domains(domains::AbstractVector{<:Domain};
+                      xlims=(0.0, 1.0),
+                      ylims=(0.0, 1.0),
+                      ) 
+    @assert length(center(domains[1])) == 2 
+    outplot = plot(; xlims, ylims, aspect_ratio=:equal) 
+    for domain in domains
+        centers = center.(gather_descendants([domain]))
+        x = [centers[k][1] for k in 1 : length(centers)]
+        y = [centers[k][2] for k in 1 : length(centers)]
+        scatter!(outplot, x, y)
+    end
+    return outplot
 end
 
 # # unclear what this is doing :D
