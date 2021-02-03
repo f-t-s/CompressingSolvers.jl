@@ -1,11 +1,9 @@
 import SparseArrays: SparseVector, sparsevec
-import LinearAlgebra: qr, Matrix
+import LinearAlgebra: cholesky, Matrix
 
 function create_basis_vector(id_arrays, weights, N)
     @assert size(id_arrays) == size(weights)
-    normalization_constant = sqrt(sum((weights.^2).*(length.(id_arrays))))
-    @show typeof.(id_arrays)
-    out_weights = vcat([weights[k] * one.(id_arrays[k]) for k = 1 : length(weights)]...) / normalization_constant
+    out_weights = vcat([weights[k] * one.(id_arrays[k]) for k = 1 : length(weights)]...)
     return sparsevec(vcat(id_arrays...), out_weights, N)
 end
 
@@ -18,7 +16,6 @@ function compute_basis_functions(domains::AbstractVector{Domain{PT}}, N = maximu
     # recursive functions that computes the basis functions orthogonal in ℓ^2 inner product. Here, k is the level of domain
     function recurse(dm, k)
         # If the domain is elementrary, we return an array containint its index.
-        println("Entering recurse")
         n_ch = length(children(dm))
         if iselementary(dm)
             return [id(dm)]
@@ -31,21 +28,25 @@ function compute_basis_functions(domains::AbstractVector{Domain{PT}}, N = maximu
                 push!(basis_vectors, Vector{SparseVector{eltype(PT), Int}}(undef, 0))
             end 
 
-            # TODO: Fix orthogonalization procedure!
             # Compute coefficients of linear combination
-            M = zeros(eltype(PT), n_ch, n_ch + 1)
-            M[: , 1] .= one(eltype(M))
-            # setting the entries of M to reproduce inner products
-            for i = 1 : n_ch; M[i, i + 1] = weight(children(dm)[i]); end
+            M = zeros(eltype(PT), n_ch + 1, n_ch + 1)
+            M[1, 1] = sum(weight.(children(dm)))
+            # setting the inner products.
+            for i = 1 : n_ch; 
+                M[1, i + 1] = M[i + 1, 1] = M[i + 1, i + 1] = weight(children(dm)[i]) 
+            end
+            # Adding 1 to the last entry of M to ensure positivity# 
+            # This should not affect the result, since the affected columns are dropped
+            M[end, end] += 1
             # Compute QR factorization that will provide coefficients 
-            R = inv(Matrix(qr(M).R)[:, 1 : n_ch])
+            R = inv(Matrix(cholesky(M).L'))
 
             # apply the function to the children to obtain the children arrays
             id_arrays = map(ch -> recurse(ch, k + 1), children(dm))
+            id_arrays = vcat([vcat(id_arrays...)], id_arrays)
 
             # If on first level, return normalized average as basis function
 
-            @show k
             if k == 1
                 push!(basis_vectors[k], create_basis_vector(id_arrays, R[:, 1], N))
                 push!(centers[k], center(dm))
@@ -56,7 +57,7 @@ function compute_basis_functions(domains::AbstractVector{Domain{PT}}, N = maximu
                 push!(basis_vectors[k + 1], create_basis_vector(id_arrays, R[:, ch], N))
                 push!(centers[k + 1], center(dm))
             end
-            return vcat(id_arrays...)
+            return id_arrays[1]
         end
     end
     for dm in domains
