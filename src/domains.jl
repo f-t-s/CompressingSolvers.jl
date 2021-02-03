@@ -53,7 +53,7 @@ function subdomains(t::Domain{PT}) where {PT<:AbstractVector}
     end
 end
 
-# construct a new domain from a list of domain on a finer scale
+# construct a new domain from a list of children
 function Domain(input_children::AbstractVector{Domain{PT}}, id) where {PT<:AbstractVector}
     out_center = zero(PT)
     out_weight = 0
@@ -66,19 +66,29 @@ function Domain(input_children::AbstractVector{Domain{PT}}, id) where {PT<:Abstr
     return Domain{PT}(out_center, out_weight, out_children, id)
 end
 
+# returns a copy of the input domain that has the additional children
+# in the array child
+function add_children(domain::DT, new_children::AbstractVector{DT}) where DT<:Domain
+    return Domain(vcat(children(domain), new_children), id(domain))
+end
+
+
+
 # construct an elementary domain from a coordinate
-function Domain(input_coordinates::PT, id) where {PT<:AbstractVector}
-    return Domain{PT}(input_coordinates, 1, Vector{Domain{PT}}(undef, 0), id)
+function Domain(input_coordinates::PT, id, weight=1) where {PT<:AbstractVector}
+    return Domain{PT}(input_coordinates, weight, Vector{Domain{PT}}(undef, 0), id)
 end
 
 # construct a list of elementary domains from the columns of a matrix
 # can use dims keyword to instead construct them from rows of matrix.
-function array2domains(in::AbstractMatrix{<:Real}; dims=1) 
+function array2domains(in::AbstractMatrix{<:Real}, weights=1; dims=1) 
     if dims == 2    
         in = transpose(in)
     elseif dims != 1 
         error("Invalid keyword argument for dims")
     end
+    @assert typeof(weights) <: Real || length(weights) == size(in, 2)
+    weights = weights .* ones(size(in, 2))
     d, N = size(in)
     out = Vector{Domain{SVector{d, eltype(in)}}}(undef, N)
     for k = 1 : N 
@@ -130,9 +140,8 @@ end
 # A function to cluster a list of points around centers chosen from among them, that are at least scale apart.
 # When creating basis functions, scale should be taken as the diameter of the support size of the input basis functions.
 # returns an array containing the indices of the centers, as well as an array of arrays which contain the clustering indices
-function cluster(centers::AbstractVector{<:SVector}, scale, tree_function)
-    # List that keeps track whether we have already crossed of a given domain
-    list = falses(length(centers))
+# list keeps track of which points are still possible choices for the aggregation procedure.
+function cluster(centers::AbstractVector{<:SVector}, scale, tree_function, list=falses(length(centers)))
     # aggregation centers
     aggregation_centers = Vector{eltype(centers)}(undef, 0)
     # Id's of the centers selected as aggregation points
@@ -169,18 +178,17 @@ function cluster(domains::AbstractVector{<:Domain}, scale, tree_function)
     return aggregated_domains
 end
 
-
 # Function that thakes in a list of points and returns a hierarchical domain decomposition
 # centeres contains the point location of the degrees of freedom
 # h is the ratio between subsequenct scales,
 # centers contains the centers of the degrees of freedom
-function create_hierarchy(input_domains::AbstractVector{<:Domain}, h, diams; tree_function=KDTree, h_min = minimum(diams), h_max = max(approximate_diameter(center.(input_domains)), maximum(diams)))
+function create_hierarchy(input_domains::AbstractVector{<:Domain}, h, diams; tree_function=KDTree, h_min = minimum(diams), h_max = max(approximate_diameter(center.(input_domains) / 2), maximum(diams)))
     # the input basis functions should be ordered from coarse to fine, meaning that dims should be sorted in decreasing order.
     @assert issorted(diams, rev=true)
     # Compute the number of levels needed in total
     q = ceil(Int, log(h, h_min / h_max)) + 1
     # vector containing the scales of the different levels
-    @show scales = h_max .* (h .^ (0 : (q - 1)))
+    scales = h_max .* (h .^ (0 : (q - 1)))
     # function that the level to a 
     # We store the original domains that still need to be included into 
     domains_remaining = copy(input_domains)
