@@ -10,7 +10,11 @@ using Plots
         include("test_domains.jl")
     end
     # Testing creating_problems.jl
-    @testset "domain.jl" begin
+    @testset "create_problems.jl" begin
         include("./test_create_problems.jl")
+    end
+
+    @testset "reconstruction.jl" begin
+        include("./test_reconstruction.jl")
     end
 end

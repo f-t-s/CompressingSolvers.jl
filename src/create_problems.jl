@@ -1,5 +1,15 @@
 import SparseArrays.SparseMatrixCSC
 import SparseArrays: findnz, dropzeros!, spdiagm
+import StaticArrays: SVector
+
+function aggregation_centers_2d(ρh) 
+    ticks = ρh : (2 * ρh) : (1 - ρh)
+    # if ticks is empty, add a single entry to it, resulting in all nodes being summarized in the same supernode
+    if isempty(ticks) 
+        ticks = [zero(ρh)]
+    end
+    return SVector{2}.([[x; y] for x in ticks for y in ticks])
+end
 
 # Create a finite difference Laplacian problem on a quadratic mesh using sudivision, with dirichlet boundary conditions.
 # q: total number of subdivisions, leading to a number dofs given by 2^{qd}
@@ -63,13 +73,23 @@ function FD_Laplacian_subdivision_2d(q, ρ = 2.0, α = x -> 1)
         end
         domains = new_domains
     end
+    scales = 1 ./ (2 .^ (1 : q))
 
     ##################################################################
     # Construct the basis functions 
     ##################################################################
+    basis_vectors, centers = compute_basis_functions(domains)
+
+    ##################################################################
+    # Constructing supernodes 
+    ##################################################################
+    # The supernodes corresponding to different columns of 𝐋
+    basis_supernodes = construct_supernodes.(aggregation_centers_2d.(ρ * scales), basis_vectors, centers)
+    # Supernodes corresponding to different rows of 𝐋
+    domain_supernodes = construct_supernodes(aggregation_centers_2d(ρ * scales[end]), domains)
     
 
+    multicolor_ordering = construct_multicolor_ordering(basis_supernodes, 1.5 * ρ * scales)
 
-
-    return A, domains
+    return A, domains, scales, basis_vectors, centers, basis_supernodes, domain_supernodes, multicolor_ordering
 end

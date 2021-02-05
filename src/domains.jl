@@ -1,10 +1,7 @@
-import NearestNeighbors.KDTree
-import NearestNeighbors.inrange
-import NearestNeighbors.nn
+import NearestNeighbors: KDTree, inrange, nn
 import StaticArrays.SVector
 import LinearAlgebra.norm
-import Plots.scatter!
-import Plots.plot
+import Plots: scatter!, plot
 
 # This file contains the definitions for nested partitions 
 
