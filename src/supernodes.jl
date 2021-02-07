@@ -5,9 +5,9 @@ import LinearAlgebra.Vector
 # Abstract type for super nodes
 abstract type AbstractSuperNode{PT} end
 # A struct that contains a supernode, the corresponding basis vectors, and their identity 
-struct SuperNodeBasis{PT} <: AbstractSuperNode{PT}
+struct SuperNodeBasis{PT, RT} <: AbstractSuperNode{PT}
     center::PT
-    basis_vectors::Vector{SparseVector{eltype(PT), Int}}
+    basis_functions::Vector{BasisFunction{PT, RT}}
 end
 
 # A struct that contains a supernode for the DOFs
@@ -16,29 +16,32 @@ struct SuperNodeDomain{PT} <: AbstractSuperNode{PT}
     domains::Vector{Domain{PT}}
 end
 
-function SuperNodeBasis(center::PT, basis_vectors::Vector{SparseVector{RT, Int}}) where {RT<:Real,PT<:AbstractArray{RT}}
-    return SuperNodeBasis{PT}(center, basis_vectors)
+function SuperNodeBasis(center::PT, basis_functions::Vector{BasisFunction{PT,RT}}) where {RT<:Real,PT<:AbstractArray{RT}}
+    return SuperNodeBasis{PT, RT}(center, basis_functions)
 end
 
 function SuperNodeDomain(center::PT, domains::Vector{Domain{PT}}) where {PT<:AbstractArray{<:Real}}
     return SuperNodeDomain{PT}(center, domains)
 end
 
+function domains(node::SuperNodeDomain)
+    return node.domains
+end
 
-function get_center(in::AbstractSuperNode)
+function center(in::AbstractSuperNode)
     return in.center
 end
 
 # Construct supernodes about aggregation centers provided by the user
 # centers is the vector of centers of basis functions, and 
-function construct_supernodes(aggregation_centers, basis_vectors, centers, tree_function=KDTree)
+function construct_supernodes(aggregation_centers, basis_functions::AbstractVector{BasisFunction{PT,RT}}, tree_function=KDTree) where {PT<:AbstractVector{<:Real},RT<:Real}
     # allocating output array
-    out = Vector{SuperNodeBasis{eltype(centers)}}(undef, length(aggregation_centers))
+    out = Vector{SuperNodeBasis{PT,RT}}(undef, length(aggregation_centers))
     # Constructing themembership lists of the different supernodes, by assigning them to the closest aggregation center
-    member_lists = construct_member_lists(nn(tree_function(aggregation_centers), centers)[1])
+    member_lists = construct_member_lists(nn(tree_function(aggregation_centers), center.(basis_functions))[1])
     # Creating the new SuperNode
     for (k, list) in enumerate(member_lists)
-        out[k] = SuperNodeBasis(aggregation_centers[k], basis_vectors[list])
+        out[k] = SuperNodeBasis(aggregation_centers[k], basis_functions[list])
     end
     return out 
 end
@@ -58,13 +61,12 @@ function construct_supernodes(aggregation_centers, domains::AbstractVector{<:Dom
     return out 
 end
 
-
 function construct_multicolor_ordering(input_supernodes::AbstractArray{<:SuperNodeBasis}, ρh, tree_function=KDTree)
     # Vector (colors) of Vectors of supernodes  
     out = Vector{typeof(input_supernodes)}(undef, 0)
     assigned = falses(length(input_supernodes))
     # While not all nodes are assigned to a color
-    tree = tree_function(get_center.(input_supernodes))
+    tree = tree_function(center.(input_supernodes))
     while sum(length.(out)) < length(input_supernodes)
         ruled_out = falses(size(assigned))
         # add new color
@@ -77,7 +79,7 @@ function construct_multicolor_ordering(input_supernodes::AbstractArray{<:SuperNo
                 # Make note that node was assigned to color
                 assigned[k] = true
                 # Make note that its neighbors are not allowed to be assigned to the same color
-                ruled_out[inrange(tree, get_center(node), ρh)] .= true
+                ruled_out[inrange(tree, center(node), ρh)] .= true
             end
         end
     end
@@ -93,5 +95,5 @@ function construct_multicolor_ordering(input_supernodes::AbstractArray{<:Abstrac
     for k = 1 : q
         out[k] = construct_multicolor_ordering(input_supernodes[k], ρh[k], tree_function)
     end
-    return out
+    return vcat(out...)
 end 

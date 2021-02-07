@@ -1,6 +1,23 @@
 import SparseArrays: SparseVector, sparsevec
 import LinearAlgebra: cholesky, Matrix
 
+struct BasisFunction{PT,RT}
+    center::PT
+    coefficients::SparseVector{RT, Int}
+end
+
+function BasisFunction(center, coefficients)
+    return BasisFunction{typeof(center), eltype(coefficients)}(center, coefficients) 
+end
+
+function center(bf::BasisFunction)
+    return bf.center
+end
+
+function coefficients(bf::BasisFunction)
+    return bf.coefficients
+end
+
 function create_basis_vector(id_arrays, weights, N)
     @assert size(id_arrays) == size(weights)
     out_weights = vcat([weights[k] * one.(id_arrays[k]) for k = 1 : length(weights)]...)
@@ -64,5 +81,12 @@ function compute_basis_functions(domains::AbstractVector{Domain{PT}}, N = maximu
         recurse(dm, 1)
     end
 
-    return basis_vectors, centers 
+    # combine basis_vectors and centers to basis functions
+    # cannot broadcast directly, because we are dealing with arrays of arrays of basis functions due to the different scales.
+    out = Vector{Vector{BasisFunction{eltype(centers[1]), eltype(basis_vectors[1][1])}}}(undef, length(basis_vectors))
+    for k = 1 : length(basis_vectors)
+        out[k] = BasisFunction.(centers[k], basis_vectors[k])
+    end
+
+    return out
 end
