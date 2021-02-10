@@ -114,6 +114,10 @@ function SupernodalSparseVector(mat::SparseMatrixCSC, row_supernodes::Vector{Vec
     return SupernodalSparseVector{eltype(mat)}(sparsevec(unique(getindex.(I_super, 1)), S_super), buffer, row_supernodes)
 end
 
+function SupernodalSparseVector(node = SuperNodeBasis, row_supernodes::AbstractVector{Int})
+    return SupernodalSparseVector(hcat(basis_functions.(node)...), row_supernodes)
+end
+
 # inverse of the constructor of the sparsesupernodalvector
 function SparseMatrixCSC(in::SupernodalSparseVector)
     out_I = Vector{Int}(undef, 0)
@@ -161,14 +165,17 @@ struct SupernodalFactorization{RT} <: AbstractSupernodalSparseArray{RT,2}
     # The member lists of the underlying supernodes 
     row_supernodes::Vector{Vector{Int}}
 
-    # column_supernodes::
+    # column_supernodes, stored as a vector of vectors of sparse supernodal vectors representing the hcated basis functions in terms of the row_supernodes
+    # The outermost vector loops over the different colos of the multicolor ordering.
+    column_supernodes::Vector{Vector{SupernodalSparseVector{RT}}}::
     
     # The buffer underlying nnz
     buffer::Vector{RT}
 end
 
 # Constructor for the supernodal factorization
-function SupernodalFactorization{RT}(I::AbstractVector{Int}, J::AbstractVector{Int}, row_supernodes::AbstractVector{<:AbstractVector{Int}}, lengths_column_supernodes::AbstractVector{Int}) where {RT<:Real}
+function SupernodalFactorization{RT}(I::AbstractVector{Int}, J::AbstractVector{Int}, row_supernodes::AbstractVector{<:AbstractVector{Int}}, column_supernodes::AbstractVector{<:AbstractVector{SupernodalSparseVector{RT}}}) where {RT<:Real}
+    lengths_column_supernodes = map(x -> size(data(x), 2)(vcat(column_supernodes...)))
     @assert length(I) == length(J)
     M = sum(length.(row_supernodes))
     N = sum(lengths_column_supernodes)
@@ -189,13 +196,20 @@ function SupernodalFactorization{RT}(I::AbstractVector{Int}, J::AbstractVector{I
     for k = 1 : (length(cum_sum_product_lengths) - 1)
         data.nzval[k] = reshape(view(buffer, cum_sum_product_lengths[k] : (cum_sum_product_lengths[k + 1]) - 1), row_lengths[I[k]], lengths_column_supernodes[J[k]])
     end
-    return SupernodalFactorization{RT}(data, row_supernodes, buffer) 
+    return SupernodalFactorization{RT}(data, row_supernodes, column_supernodes, buffer) 
 end
 
 # Constructs a supernodal factorization from a multicolor ordering 
 function SupernodalFactorization(multicolor_ordering::AbstractVector{<:AbstractVector{SuperNodeBasis{PT,RT}}}, domain_supernodes::AbstractVector{<:SuperNodeDomain}, tree_function=KDTree) where {PT,RT<:Real}
-    # Gather the lengths of the domain supernodes 
     lengths_column_supernodes = length.(basis_functions.(vcat(multicolor_ordering...)))
+    column_supernodes = Vector{Vector{SupernodalSparseVector{RT}}}(undef, length(multicolor_ordering))
+    for k = 1 : length(column_supernodes)
+        column_supernodes[k] = Vector{SupernodalSparseVector{RT}}(undef, length(multicolor_ordering[k]))
+        for (l, node) in enumerate(multicolor_ordering[k])
+            column_supernodes[k][l] = SupernodalSparseVector(node, row_supernodes)
+        end
+    end
+    # Gather the lengths of the domain supernodes 
     # obtain the (indices of) the row_supernodes
     row_supernodes = [id.(domains(domain_supernodes[k])) for k = 1 : length(domain_supernodes)]
     I = Vector{Int}(undef, 0)
@@ -212,7 +226,7 @@ function SupernodalFactorization(multicolor_ordering::AbstractVector{<:AbstractV
             push!(J, offset + j_color) 
         end
     end
-    SupernodalFactorization{RT}(I, J, row_supernodes, lengths_column_supernodes)
+    SupernodalFactorization{RT}(I, J, row_supernodes, column_supernodes)
 end
 
 function supernodal_size(𝐋::SupernodalFactorization)

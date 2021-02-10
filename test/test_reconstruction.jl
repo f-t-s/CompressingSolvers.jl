@@ -25,7 +25,6 @@
     @testset "SupernodalFactorization" begin
         # Setting up the test domains
         domains, scales, basis_functions = CompressingSolvers.subdivision_2d(5)
-
         ρ = 3.0
         basis_supernodes, domain_supernodes, multicolor_ordering = CompressingSolvers.supernodal_aggregation_square(domains, scales, basis_functions, ρ)
 
