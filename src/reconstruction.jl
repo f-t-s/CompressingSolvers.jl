@@ -73,8 +73,10 @@ end
 # Construct a supernodal sparse vector from a sparse matrix 
 function SupernodalSparseVector(mat::SparseMatrixCSC, row_supernodes::Vector{Vector{Int}})
     M, N = size(mat)
+    @assert sum(length.(row_supernodes)) == M
+    @assert sort(vcat(row_supernodes...)) == 1 : M
     # A vector such that row_supernodes[supernode_dict[k][1]][supernode_dict[k][2]] = k
-    supernode_dict = Vector{Tuple{Int,Int}}(undef, size(mat, 1))
+    supernode_dict = Vector{Tuple{Int,Int}}(undef, M)
     for (i, node) in enumerate(row_supernodes)
         for (j, k) in enumerate(node)
             supernode_dict[k] = (i, j)
@@ -104,18 +106,21 @@ function SupernodalSparseVector(mat::SparseMatrixCSC, row_supernodes::Vector{Vec
 
     @assert all(size.(S_super, 1) .== length.(row_supernodes[unique(getindex.(I_super, 1))]))
 
-
-
-    # adding the nonzeros
-    for (i_super, j, s) in zip(I_super, J_el, S_el)
+    # TODO: Problem is that the first indices of I_super don't accound for "skipped" supernodes.
+    # In general, maximum(getindex.(I_super, 1)) > length(unique(getindex.(I_super, 1)))
+    for (k, i_super, j, s) in zip(1 : length(S_super), I_super, J_el, S_el)
         # in the supernode \# i_super[1], we add s to the entry (i_super[2], j)
-        S_super[i_super[1]][i_super[2], j] += s
+        @show i_super[1]
+        @show i_super[2]
+        @show j
+        @show size(S_super[k])
+        S_super[k][i_super[2], j] += s
     end
     return SupernodalSparseVector{eltype(mat)}(sparsevec(unique(getindex.(I_super, 1)), S_super), buffer, row_supernodes)
 end
 
-function SupernodalSparseVector(node = SuperNodeBasis, row_supernodes::AbstractVector{Int})
-    return SupernodalSparseVector(hcat(basis_functions.(node)...), row_supernodes)
+function SupernodalSparseVector(node::SuperNodeBasis, row_supernodes::AbstractVector{<:AbstractVector{Int}})
+    return SupernodalSparseVector(hcat(coefficients.(basis_functions(node))...), row_supernodes)
 end
 
 # inverse of the constructor of the sparsesupernodalvector
@@ -154,8 +159,8 @@ function Matrix(col::SupernodalVector)
     return out
 end
 
-# We store the factorization as an LDL factorization in column-major ordering
-struct SupernodalFactorization{RT} <: AbstractSupernodalSparseArray{RT,2}
+# We store the factorization as an LL' factorization in column-major ordering
+struct SupernodalFactorization{RT}<:AbstractSupernodalSparseArray{RT,2}
     # This is the underlying buffer storing all nonzeros of the factor
     # The nonzeros appear column-by-column and, within each column, supernode by supernode
 
@@ -167,7 +172,7 @@ struct SupernodalFactorization{RT} <: AbstractSupernodalSparseArray{RT,2}
 
     # column_supernodes, stored as a vector of vectors of sparse supernodal vectors representing the hcated basis functions in terms of the row_supernodes
     # The outermost vector loops over the different colos of the multicolor ordering.
-    column_supernodes::Vector{Vector{SupernodalSparseVector{RT}}}::
+    column_supernodes::Vector{Vector{SupernodalSparseVector{RT}}}
     
     # The buffer underlying nnz
     buffer::Vector{RT}
@@ -202,6 +207,7 @@ end
 # Constructs a supernodal factorization from a multicolor ordering 
 function SupernodalFactorization(multicolor_ordering::AbstractVector{<:AbstractVector{SuperNodeBasis{PT,RT}}}, domain_supernodes::AbstractVector{<:SuperNodeDomain}, tree_function=KDTree) where {PT,RT<:Real}
     lengths_column_supernodes = length.(basis_functions.(vcat(multicolor_ordering...)))
+    row_supernodes = [id.(domains(domain_supernodes[k])) for k = 1 : length(domain_supernodes)]
     column_supernodes = Vector{Vector{SupernodalSparseVector{RT}}}(undef, length(multicolor_ordering))
     for k = 1 : length(column_supernodes)
         column_supernodes[k] = Vector{SupernodalSparseVector{RT}}(undef, length(multicolor_ordering[k]))
@@ -211,7 +217,6 @@ function SupernodalFactorization(multicolor_ordering::AbstractVector{<:AbstractV
     end
     # Gather the lengths of the domain supernodes 
     # obtain the (indices of) the row_supernodes
-    row_supernodes = [id.(domains(domain_supernodes[k])) for k = 1 : length(domain_supernodes)]
     I = Vector{Int}(undef, 0)
     J = Vector{Int}(undef, 0)
     # the offsets used to transform position within a given color to the position in the full sparse array
