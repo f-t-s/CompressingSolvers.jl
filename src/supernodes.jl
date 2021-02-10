@@ -11,7 +11,7 @@ struct SuperNodeBasis{PT, RT} <: AbstractSuperNode{PT}
 end
 
 # A struct that contains a supernode for the DOFs
-struct SuperNodeDomain{PT} <: AbstractSuperNode{PT}
+struct SuperNodeDomain{PT} <: AbstractSuperNode{PT} 
     center::PT
     domains::Vector{Domain{PT}}
 end
@@ -28,6 +28,11 @@ function domains(node::SuperNodeDomain)
     return node.domains
 end
 
+function basis_functions(node::SuperNodeBasis)
+    return node.basis_functions
+end
+
+
 function center(in::AbstractSuperNode)
     return in.center
 end
@@ -35,28 +40,34 @@ end
 # Construct supernodes about aggregation centers provided by the user
 # centers is the vector of centers of basis functions, and 
 function construct_supernodes(aggregation_centers, basis_functions::AbstractVector{BasisFunction{PT,RT}}, tree_function=KDTree) where {PT<:AbstractVector{<:Real},RT<:Real}
+    @assert !isempty(aggregation_centers)
     # allocating output array
-    out = Vector{SuperNodeBasis{PT,RT}}(undef, length(aggregation_centers))
     # Constructing themembership lists of the different supernodes, by assigning them to the closest aggregation center
     member_lists = construct_member_lists(nn(tree_function(aggregation_centers), center.(basis_functions))[1])
-    # Creating the new SuperNode
+
+    # allocating output array
+    out = Vector{SuperNodeBasis{PT,RT}}(undef, length(member_lists))
+    # list[1] contrains the id of the the aggregation center, list[2] contains the actual list of domains associated to it
     for (k, list) in enumerate(member_lists)
-        out[k] = SuperNodeBasis(aggregation_centers[k], basis_functions[list])
+        out[k] = SuperNodeBasis(aggregation_centers[list[1]], basis_functions[list[2]])
     end
     return out 
 end
 
 # Construct supernodes about aggregation centers provided by the user
 # centers is the vector of centers of basis functions, and 
+# TODO: need to use all elementary domains!!!
 function construct_supernodes(aggregation_centers, domains::AbstractVector{<:Domain}, tree_function=KDTree)
-    centers = center.(domains)
-    # allocating output array
-    out = Vector{SuperNodeDomain{eltype(centers)}}(undef, length(aggregation_centers))
+    @assert !isempty(aggregation_centers)
     # Constructing themembership lists of the different supernodes, by assigning them to the closest aggregation center
-    member_lists = construct_member_lists(nn(tree_function(aggregation_centers), centers)[1])
+    member_lists = construct_member_lists(nn(tree_function(aggregation_centers), center.(domains))[1])
     # Creating the new SuperNode
+
+    # allocating output array
+    out = Vector{SuperNodeDomain{eltype(aggregation_centers)}}(undef, length(member_lists))
+    # list[1] contrains the id of the the aggregation center, list[2] contains the actual list of domains associated to it
     for (k, list) in enumerate(member_lists)
-        out[k] = SuperNodeDomain(aggregation_centers[k], domains[list])
+        out[k] = SuperNodeDomain(aggregation_centers[list[1]], domains[list[2]])
     end
     return out 
 end

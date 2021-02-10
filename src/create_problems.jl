@@ -67,14 +67,12 @@ function supernodal_aggregation_square(domains, scales, basis_functions, ρ)
     ##################################################################
     # The supernodes corresponding to different columns of 𝐋
     basis_supernodes = construct_supernodes.(aggregation_centers_square.(ρ * scales), basis_functions)
-    # Supernodes corresponding to different rows of 𝐋
-    domain_supernodes = construct_supernodes(aggregation_centers_square(ρ * scales[end]), domains)
+   # Supernodes corresponding to different rows of 𝐋
+    domain_supernodes = vcat(construct_supernodes.(aggregation_centers_square.(ρ * scales), gather_hierarchy(domains, true))...)
     # Multicolor ordering 
     multicolor_ordering = construct_multicolor_ordering(basis_supernodes, 1.5 * ρ * scales)
-    return basis_supernodes, domain_supernodes, multicolor_ordering
+    return vcat(basis_supernodes...), domain_supernodes, multicolor_ordering
 end
-
-
 
 # Create a finite difference Laplacian problem on a quadratic mesh using sudivision, with dirichlet boundary conditions.
 # q: total number of subdivisions, leading to a number dofs given by 2^{qd}
@@ -115,7 +113,8 @@ function FD_Laplacian_subdivision_2d(q, ρ = 2.0, α = x -> 1)
     # The supernodes corresponding to different columns of 𝐋
     basis_supernodes = construct_supernodes.(aggregation_centers_square.(ρ * scales), basis_functions)
     # Supernodes corresponding to different rows of 𝐋
-    domain_supernodes = construct_supernodes(aggregation_centers_square(ρ * scales[end]), domains)
+    # TODO: need to apply per scale to the gathered hierarchy
+    domain_supernodes = vcat(construct_supernodes.(aggregation_centers_square.(ρ .* scales), gather_hierarchy(domains))...)
     # Multicolor ordering 
     multicolor_ordering = construct_multicolor_ordering(basis_supernodes, 1.5 * ρ * scales)
     return A, domains, scales, basis_functions, basis_supernodes, domain_supernodes, multicolor_ordering

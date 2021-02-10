@@ -122,16 +122,25 @@ end
 # Helper functions for clustering
 # The Vector memberships contains elements of ids
 # memberships[i] = j signifies that the i-th member is associated 
-# to 
+# to j
 function construct_member_lists(memberships_abstract)
-    member_lists = Vector{Vector{Int}}(undef, maximum(memberships_abstract))
-    for k = 1 : length(member_lists)
-        member_lists[k] = Vector{Int}(undef, 0)
+    # Catching the special case where there are not membership relations
+    if isempty(memberships_abstract)
+        return Int[]
+    else 
+        member_lists = Vector{Tuple{Int, Vector{Int}}}(undef, maximum(memberships_abstract))
+        # Initialize with empty array
+        for k = 1 : length(member_lists)
+            member_lists[k] = (k, Vector{Int}(undef, 0))
+        end
+        for k = 1 : length(memberships_abstract)
+            push!(member_lists[memberships_abstract[k]][2], k)
+        end
+        # removes all entries corresponding to empty member lists
+        member_lists = member_lists[findall(.!isempty.(getindex.(member_lists, 2)))]
+
+        return member_lists
     end
-    for k = 1 : length(memberships_abstract)
-        push!(member_lists[memberships_abstract[k]], k)
-    end
-    return member_lists
 end
 
 # A function to cluster a list of points around centers chosen from among them, that are at least scale apart.
@@ -157,8 +166,12 @@ function cluster(centers::AbstractVector{<:SVector}, scale, tree_function, list=
     # contains the membership of each element expressed as an integer between 1 and number_of_clusters
     memberships_abstract = nn(tree_function(aggregation_centers), centers)[1]
 
-    # returns the indices of the domaisn ussed as centers of clustering, as well as an array of arrays that contains the members of each cluster
-    return aggregation_indices, construct_member_lists(memberships_abstract)
+    # Construct member_lists. Since by definition every aggregation center contains gets at least one member, the following assertion should hold true, and we can discard the aggregation indices returned by the function construct_member_lists
+    member_lists = construct_member_lists(memberships_abstract)
+    @assert sort(getindex.(member_lists, 1)) == 1 : length(aggregation_indices)
+    member_lists = getindex.(member_lists, 2)
+    # returns the indices of the domains used as centers of clustering, as well as an array of arrays that contains the members of each cluster
+    return aggregation_indices, getindex.(construct_member_lists(memberships_abstract), 2)
 end
 
 # Directly compute the new clustered nodes from an input set of clustered nodes.
@@ -203,8 +216,8 @@ function create_hierarchy(input_domains::AbstractVector{<:Domain}, h, diams; tre
 end
 
 # A function that takes as input the coarsest level of a hierarchical 
-# domain decomposition 
-function gather_hierarchy(coarsest::AbstractVector{<:Domain})
+# domain decomposition and returns all supernodes on the different levels. Optionally only returns elementary domains
+function gather_hierarchy(coarsest::AbstractVector{<:Domain}, elementary=false)
     out = Vector{Vector{eltype(coarsest)}}(undef, 0)
 
     # recursive function provided with a domain and its input level
@@ -223,6 +236,12 @@ function gather_hierarchy(coarsest::AbstractVector{<:Domain})
     # Initialize recursioin, assigning level 1 to the parent domain
     for coarse_domain in coarsest
         recurse!(out, coarse_domain, 1)
+    end
+
+    if elementary
+        for k = 1 : length(out)
+            out[k] = out[k][findall(iselementary.(out[k]))]
+        end
     end
     return out
 end
