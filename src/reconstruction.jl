@@ -1,6 +1,6 @@
 import LinearAlgebra: Matrix, Cholesky, cholesky, mul!, ldiv!
 import Base: size, getindex, enumerate, iterate
-import SparseArrays: SparseVector, SparseMatrixCSC, nonzeros, rowvals, getcolptr, sparse, sparsevec
+import SparseArrays: SparseVector, SparseMatrixCSC, nonzeros, rowvals, getcolptr, sparse, sparsevec, nnz
 # Defining an alias for matrices that are realized as resized contiguous view into a buffer
 const ContiguousBufferedMatrix{T} = Base.ReshapedArray{T,2,SubArray{Float64,1,Array{T,1},Tuple{UnitRange{Int64}},true},Tuple{}}
 
@@ -64,10 +64,18 @@ function SupernodalVector(𝐌, row_supernodes::AbstractVector{<:AbstractVector{
 end
 
 # A sparse supernodal column, which will be used for storing the basis functions in supernodal form
-struct SupernodalSparseVector{RT} <: AbstractSupernodalArray{RT,1}
+struct SupernodalSparseVector{RT} <: AbstractSupernodalSparseArray{RT,1}
     data::SparseVector{ContiguousBufferedMatrix{RT}, Int}
     buffer::Vector{RT}
     row_supernodes::Vector{Vector{Int}}
+end
+
+function size(in::SupernodalSparseVector)
+    return (sum(length.(in.row_supernodes)), size(first(in.data.nzval), 2))
+end
+
+function size(in::SupernodalSparseVector, dim)
+    return (sum(length.(in.row_supernodes)), size(first(in.data.nzval), 2))[dim]
 end
 
 # Construct a supernodal sparse vector from a sparse matrix 
@@ -83,20 +91,29 @@ function SupernodalSparseVector(mat::SparseMatrixCSC, row_supernodes::Vector{Vec
         end
     end
     I_el, J_el, S_el = findnz(mat)
+    # Re-expressing the dofs in terms of the supernodes
     I_super = supernode_dict[I_el]
+    # keeping track of those supernodes that appear in the sparsity pattern
     # We preallocate the array that will hold the matrix elements of the sparse vector
     S_super = Vector{ContiguousBufferedMatrix{eltype(mat)}}(undef, length(unique(getindex.(I_super, 1))))
     # We sum up the lengths of the supernodes in the sparsity pattern and multiply them with the number of entries per row.
     buffer = Vector{eltype(mat)}(undef, sum(length.(row_supernodes[unique(getindex.(I_super, 1))])) * N)
+    # we are sorting the entries according by the supernode that they form part of
     sp = sortperm(I_super)
     # reordering the sparsity entries
     I_super = I_super[sp]
     I_el = I_el[sp]
     J_el = J_el[sp]
     S_el = S_el[sp]
+
+    # We now extract those supernodes that appear in the sparsity pattern and recreate the dict, with the first index indicating the position of the supernode among the used supernodes
+    used_supernode_indices = unique(getindex.(I_super, 1))
+    lookup = Dict(used_supernode_indices .=> 1 : length(used_supernode_indices))
+    used_row_supernodes = row_supernodes[used_supernode_indices]
+
     # Setting up the buffer and nonzeros
     offset = 0
-    for (k, node) in enumerate(row_supernodes[unique(getindex.(I_super, 1))])
+    for (k, node) in enumerate(used_row_supernodes)
         S_super[k] = reshape(view(buffer, offset .+ (1 : (length(node)* N))), length(node), N)
         # filling the new array with zeros
         S_super[k] .= 0
@@ -104,19 +121,11 @@ function SupernodalSparseVector(mat::SparseMatrixCSC, row_supernodes::Vector{Vec
         offset += length(node) * N 
     end
 
-    @assert all(size.(S_super, 1) .== length.(row_supernodes[unique(getindex.(I_super, 1))]))
-
-    # TODO: Problem is that the first indices of I_super don't accound for "skipped" supernodes.
-    # In general, maximum(getindex.(I_super, 1)) > length(unique(getindex.(I_super, 1)))
-    for (k, i_super, j, s) in zip(1 : length(S_super), I_super, J_el, S_el)
+    for (i_super, j, s) in zip(I_super, J_el, S_el)
         # in the supernode \# i_super[1], we add s to the entry (i_super[2], j)
-        @show i_super[1]
-        @show i_super[2]
-        @show j
-        @show size(S_super[k])
-        S_super[k][i_super[2], j] += s
+        S_super[lookup[i_super[1]]][i_super[2], j] += s
     end
-    return SupernodalSparseVector{eltype(mat)}(sparsevec(unique(getindex.(I_super, 1)), S_super), buffer, row_supernodes)
+    return SupernodalSparseVector{eltype(mat)}(sparsevec(used_supernode_indices, S_super), buffer, row_supernodes)
 end
 
 function SupernodalSparseVector(node::SuperNodeBasis, row_supernodes::AbstractVector{<:AbstractVector{Int}})
@@ -136,7 +145,7 @@ function SparseMatrixCSC(in::SupernodalSparseVector)
             push!(out_S, mat[i, j])
         end
     end
-    return sparse(out_I, out_J, out_S, sum(length.(in.row_supernodes)), size(first(data(in)), 2))
+    return sparse(out_I, out_J, out_S, sum(length.(in.row_supernodes)), size(first(data(in).nzval), 2))
 end
 
 # Constructs a supernodal column from a dense matrix and a list of domain supernodes
@@ -180,10 +189,12 @@ end
 
 # Constructor for the supernodal factorization
 function SupernodalFactorization{RT}(I::AbstractVector{Int}, J::AbstractVector{Int}, row_supernodes::AbstractVector{<:AbstractVector{Int}}, column_supernodes::AbstractVector{<:AbstractVector{SupernodalSparseVector{RT}}}) where {RT<:Real}
-    lengths_column_supernodes = map(x -> size(data(x), 2)(vcat(column_supernodes...)))
+    lengths_column_supernodes = size.(vcat(vcat(column_supernodes...)...), 2)
     @assert length(I) == length(J)
     M = sum(length.(row_supernodes))
     N = sum(lengths_column_supernodes)
+
+
     @assert M == N
     # Check that row and column supernode indices are valid 
     @assert sort(vcat(row_supernodes...)) == 1 : M
@@ -192,7 +203,7 @@ function SupernodalFactorization{RT}(I::AbstractVector{Int}, J::AbstractVector{I
     # using the existing sparse functionality to construct rowval and colptr 
     data = sparse(I, J, fill(ContiguousBufferedMatrix{RT}(), length(I)))
     # Length of buffer is equal to the sum of the product of the length of the supernodes involved in each entry
-    # After removind duplictes 
+    # After removind duplicates 
     I, J, ~ = findnz(data)
     row_lengths = length.(row_supernodes) 
     cum_sum_product_lengths = cumsum(row_lengths[I] .* lengths_column_supernodes[J])
@@ -206,7 +217,6 @@ end
 
 # Constructs a supernodal factorization from a multicolor ordering 
 function SupernodalFactorization(multicolor_ordering::AbstractVector{<:AbstractVector{SuperNodeBasis{PT,RT}}}, domain_supernodes::AbstractVector{<:SuperNodeDomain}, tree_function=KDTree) where {PT,RT<:Real}
-    lengths_column_supernodes = length.(basis_functions.(vcat(multicolor_ordering...)))
     row_supernodes = [id.(domains(domain_supernodes[k])) for k = 1 : length(domain_supernodes)]
     column_supernodes = Vector{Vector{SupernodalSparseVector{RT}}}(undef, length(multicolor_ordering))
     for k = 1 : length(column_supernodes)

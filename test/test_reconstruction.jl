@@ -12,12 +12,12 @@
 
     @testset "SupernodalSparseVector" begin
         import Random.randperm
-        import SparseArrays: sprand, SparseMatrixCSC
+        import SparseArrays: sprand, SparseMatrixCSC, findnz
         M = 21
         N = 10
         rp = randperm(M)
         row_supernodes = [[rp[1:2]]; [rp[3:7]]; [rp[8:14]]; [rp[15:17]]; [rp[18:21]]]
-        𝐌 = sprand(M, N, 0.1)
+        𝐌 = sprand(M, N, 0.02)
         super_𝐌 = CompressingSolvers.SupernodalSparseVector(𝐌, row_supernodes)
         @test 𝐌 == SparseMatrixCSC(super_𝐌)
     end
