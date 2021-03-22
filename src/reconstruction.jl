@@ -98,7 +98,7 @@ function SupernodalSparseVector(mat::SparseMatrixCSC, row_supernodes::Vector{Vec
     S_super = Vector{ContiguousBufferedMatrix{eltype(mat)}}(undef, length(unique(getindex.(I_super, 1))))
     # We sum up the lengths of the supernodes in the sparsity pattern and multiply them with the number of entries per row.
     buffer = Vector{eltype(mat)}(undef, sum(length.(row_supernodes[unique(getindex.(I_super, 1))])) * N)
-    # we are sorting the entries according by the supernode that they form part of
+    # we are sorting the entries according by the supernode that they form part of 
     sp = sortperm(I_super)
     # reordering the sparsity entries
     I_super = I_super[sp]
@@ -287,14 +287,42 @@ function scatter!(𝐋::SupernodalFactorization, 𝐌::SupernodalVector ,color::
         # Setting the nzval
         nonzeros(𝐋)[index] .= view(𝐌[rowvals(𝐋)[index]], :, 1 : size(nonzeros(𝐋)[index], 2))
     end
+    # Part below seems to be unnecessary? 
     # Setting the diagonal values 
     # TODO: Add memory of supernodes to SupernodalFactorization
-    matrix_𝐌 = Matrix(𝐌)
+    # matrix_𝐌 = Matrix(𝐌)
 end
 
 # Finish function that creates the measurement matrix
-function create_measurement_matrix(multicolor_ordering::AbstractVector{<:AbstractVector{SuperNodeBasis{PT,RT}}}) where {PT<:AbstractArray{<:Real}, RT<:Real}
+function create_measurement_matrix(multicolor_ordering::AbstractVector{<:AbstractVector{SuperNodeBasis{PT,RT}}}, row_supernodes) where {PT<:AbstractArray{<:Real}, RT<:Real}
+    # obtaining M by searching for the dimensionality of the coefficients of the first basis function of the first supernode of the first color 
+    M = size(coefficients(first(basis_functions(first(first(multicolor_ordering))))), 1)
+    out = SupernodalVector{RT}[]
     for color in multicolor_ordering
-
+        # We initialize the arrays that will store the data about the sparse matrix of entries
+        I = Int[]; J = Int[]; S = RT[]
+        # we iterate through all supernodes of the present color
+        for node in color
+            # we extract the supernodes of the resulting matrix 
+            @show typeof(hcat(coefficients.(basis_functions(node))...)) 
+            I_loc, J_loc, S_loc = findnz(hcat(coefficients.(basis_functions(node))...)) 
+            append!(I, I_loc)
+            append!(J, J_loc)
+            append!(S, S_loc)
+        end
+        # we check that the sparsity patterns of the different coefficient vectors are indeed disjoint in the sense that no coordinate occurs more than once
+        @assert length([(I[k], J[k]) for k = 1 : length(I)]) == length(unique([(I[k], J[k]) for k = 1 : length(I)]))
+        #We have now assembled all nonzero values associated to a given color
+        push!(out, SupernodalVector(Matrix(sparse(I, J, S, M, maximum(J))), row_supernodes))
     end
+    return out
+end
+
+# computes a vector of supernodal vectors 𝐎 from a linear operator Θ and a measurement matrix 𝐌
+function measure(Θ, 𝐌, row_supernodes) 
+    𝐎 = Vector{SupernodalVector{eltype(first(𝐌))}}(undef, length(𝐌))
+    for k = 1 : length(𝐌)
+        𝐎[k] = SupernodalVector(Θ * 𝐌[k], row_supernodes)
+    end
+    return 𝐎
 end
