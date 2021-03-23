@@ -48,7 +48,7 @@ function subdivision_2d(q)
     ##################################################################
     basis_functions = compute_basis_functions(domains)
 
-    return domains, scales, basis_functions
+    return domains, scales, basis_functions 
 end
 
 # function for selecting the aggregation centers in the square 
@@ -82,30 +82,43 @@ function FD_Laplacian_subdivision_2d(q, ρ = 2.0, α = x -> 1)
     n = 2 ^ q
     N = n ^ 2  
     Δx = Δy = 1 / (n + 1)
+
+
+    # actual multiscale domains are provided by subdivision_2d. fine_domains only 
+    # there fore the 
+
     ##################################################################
     # Construct the Laplace operator
     ##################################################################
     # Create the sparsity pattern of the Laplace operator 
     A = spdiagm(-n => -ones(N-n), -1 => -ones(N-1) .* (mod.(1 : (N - 1), n) .!= 0), 0 => 4 * ones(N), 1 => -ones(N-1) .* (mod.(1 : (N - 1), n) .!= 0), n => -ones(N-n)) / Δx^2
-    dropzeros!(A)
-    A .*= 0
 
-    # fill the Laplace operator with nonzeros according o the sparsity pattern
+    # Important to multiply A.nzval and not A, to prevent dropping of structural nonzeros.
+    A.nzval .*= 0
+   ##################################################################
+    # Construct the domain decomposition
+    ##################################################################
+    domains, scales, basis_functions = subdivision_2d(q)
+
+    # collect the finest Domains and sorts them to be in accordance with the construction of the matrix dofs
+    fine_domains = sort(gather_descendants(domains), by=id)
+
     for (i, j, val) in zip(findnz(A)...)
         # only look at edges
         if i != j
-            val = (α(center(domains[i])) + α(center(domains[j]))) / 2
+            val = (α(center(fine_domains[i])) + α(center(fine_domains[j]))) / 2
             A[i, i] += val   
             A[j, j] += val
             A[i, j] -= val
             A[j, i] -= val
         end
     end
+    # adding zero order term for now
+    for i = 1 : size(A, 1)
+        A[i, i] += 1.0
+    end
 
-    ##################################################################
-    # Construct the domain decomposition
-    ##################################################################
-    domains, scales, basis_functions = subdivision_2d(q)
+ 
 
     ##################################################################
     # Constructing supernodes 
