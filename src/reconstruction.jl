@@ -304,7 +304,6 @@ function create_measurement_matrix(multicolor_ordering::AbstractVector{<:Abstrac
         # we iterate through all supernodes of the present color
         for node in color
             # we extract the supernodes of the resulting matrix 
-            @show typeof(hcat(coefficients.(basis_functions(node))...)) 
             I_loc, J_loc, S_loc = findnz(hcat(coefficients.(basis_functions(node))...)) 
             append!(I, I_loc)
             append!(J, J_loc)
@@ -319,10 +318,10 @@ function create_measurement_matrix(multicolor_ordering::AbstractVector{<:Abstrac
 end
 
 # computes a vector of supernodal vectors 𝐎 from a linear operator Θ and a measurement matrix 𝐌
-function measure(Θ, 𝐌, row_supernodes) 
-    𝐎 = Vector{SupernodalVector{eltype(first(𝐌))}}(undef, length(𝐌))
+function measure(Θ, 𝐌::AbstractVector{<:SupernodalVector}, row_supernodes) 
+    𝐎 = Vector{eltype(𝐌)}(undef, length(𝐌))
     for k = 1 : length(𝐌)
-        𝐎[k] = SupernodalVector(Θ * 𝐌[k], row_supernodes)
+        𝐎[k] = SupernodalVector(Θ * Matrix(𝐌[k]), row_supernodes)
     end
     return 𝐎
 end
