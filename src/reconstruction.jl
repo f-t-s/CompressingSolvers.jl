@@ -1,4 +1,4 @@
-import LinearAlgebra: Matrix, Cholesky, cholesky, mul!, ldiv!
+import LinearAlgebra: Matrix, Cholesky, cholesky, mul!, ldiv!, Hermitian
 import Base: size, getindex, enumerate, iterate, copy, fill!
 import SparseArrays: SparseVector, SparseMatrixCSC, nonzeros, rowvals, getcolptr, sparse, sparsevec, nnz
 # Defining an alias for matrices that are realized as resized contiguous view into a buffer
@@ -317,6 +317,19 @@ function partial_multiply!(out::SupernodalVector, 𝐋::SupernodalFactorization,
     end
 end
 
+# A function that computes the Cholesky factorization of the k-"diagonal" block of 𝐅 and 
+# divides the corresponding column by it
+function normalize_column!(𝐅::SupernodalFactorization, k)
+    # The constructor of does not need the buffer, so we set it to undef
+    column = SparseMatrixCSC(SupernodalSparseVector(𝐅.data[:, k], Vector{eltype(𝐅.buffer)}(undef, 0), 𝐅.row_supernodes))
+    # TODO: still strange that matrices are so far from Hermitian, might be a bug?
+    D = (Matrix(SparseMatrixCSC(vcat(𝐅.column_supernodes...)[k])' * column))
+    @show norm(D - Hermitian(D))
+    LD = cholesky(Hermitian(D)).L
+    for s in findnz(𝐅.data[:, k])[2]
+        s .= s / LD
+    end
+end 
 
 # scatters the Supernodal Column 𝐌 into the columns of 𝐋 given by color
 function scatter_column!(𝐋::SupernodalFactorization, 𝐌::SupernodalVector,color::AbstractVector{Int}) 
@@ -327,6 +340,7 @@ function scatter_column!(𝐋::SupernodalFactorization, 𝐌::SupernodalVector,c
         nonzeros(𝐋)[index] .= view(𝐌.data[rowvals(𝐋)[index]], :, 1 : size(nonzeros(𝐋)[index], 2))
     end
 end
+
 
 # Finish function that creates the measurement matrix
 function create_measurement_matrix(multicolor_ordering::AbstractVector{<:AbstractVector{SuperNodeBasis{PT,RT}}}, row_supernodes) where {PT<:AbstractArray{<:Real}, RT<:Real}
@@ -379,5 +393,9 @@ function reconstruct!(𝐅::SupernodalFactorization{RT}, 𝐎::Vector{<:Supernod
         partial_multiply!(temp, 𝐅, 𝐎[k]; max_k=colors[k][1] - 1)
         𝐎[k].data .- temp.data
         scatter_column!(𝐅, 𝐎[k], colors[k])
+        # normalizing by diagonal square root
+        for l in colors[k]
+            normalize_column!(𝐅, l)
+        end
     end
 end
