@@ -32,15 +32,24 @@
     end
 
     @testset "reconstruction" begin
+        import SparseArrays.sparse 
         # Setting up the test domains
         ρ = 3.0
         A, domains, scales, basis_functions, basis_supernodes, domain_supernodes, multicolor_ordering = CompressingSolvers.FD_Laplacian_subdivision_2d(3, ρ)
 
         𝐅 = CompressingSolvers.SupernodalFactorization(multicolor_ordering, domain_supernodes)
 
+        # Ensuring that the lengths of the supernodes are correct
+        for (i, j, mat) in zip(findnz(𝐅.data)...)
+            @test size(mat) == (length(𝐅.row_supernodes[i]), size(vcat(𝐅.column_supernodes...)[j], 2))
+        end
+
         𝐌 = CompressingSolvers.create_measurement_matrix(multicolor_ordering, 𝐅.row_supernodes)
 
-        CompressingSolvers.measure(inv(Matrix(A)), 𝐌, 𝐅.row_supernodes) 
+        𝐎 = CompressingSolvers.measure(inv(Matrix(A)), 𝐌, 𝐅.row_supernodes) 
+
+        CompressingSolvers.reconstruct!(𝐅, 𝐎, multicolor_ordering)
+        L = sparse(𝐅)
     end
 
 end

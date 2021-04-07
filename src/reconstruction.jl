@@ -1,5 +1,5 @@
 import LinearAlgebra: Matrix, Cholesky, cholesky, mul!, ldiv!
-import Base: size, getindex, enumerate, iterate
+import Base: size, getindex, enumerate, iterate, copy, fill!
 import SparseArrays: SparseVector, SparseMatrixCSC, nonzeros, rowvals, getcolptr, sparse, sparsevec, nnz
 # Defining an alias for matrices that are realized as resized contiguous view into a buffer
 const ContiguousBufferedMatrix{T} = Base.ReshapedArray{T,2,SubArray{Float64,1,Array{T,1},Tuple{UnitRange{Int64}},true},Tuple{}}
@@ -43,6 +43,14 @@ struct SupernodalVector{RT} <: AbstractSupernodalArray{RT,1}
     row_supernodes::Vector{Vector{Int}}
 end
 
+function copy(in::SupernodalVector{RT}) where RT
+    return SupernodalVector{RT}(copy(in.data), copy(in.buffer), copy(in.row_supernodes))
+end 
+
+function fill!(in::SupernodalVector, a)
+    fill!(in.buffer, a)
+end
+
 # Constructs a supernodal column from a dense matrix and supernodal ids
 function SupernodalVector(𝐌, row_supernodes::AbstractVector{<:AbstractVector{Int}})
     buffer = zeros(eltype(𝐌), length(𝐌))
@@ -62,6 +70,15 @@ function SupernodalVector(𝐌, row_supernodes::AbstractVector{<:AbstractVector{
     end
     return SupernodalVector{eltype(𝐌)}(data, buffer, row_supernodes)
 end
+
+function size(in::SupernodalVector)
+    return (sum(length.(in.row_supernodes)), size(first(in.data), 2))
+end
+
+function size(in::SupernodalVector, dim)
+    return size(in)[dim]
+end
+
 
 # A sparse supernodal column, which will be used for storing the basis functions in supernodal form
 struct SupernodalSparseVector{RT} <: AbstractSupernodalSparseArray{RT,1}
@@ -180,12 +197,33 @@ struct SupernodalFactorization{RT}<:AbstractSupernodalSparseArray{RT,2}
     row_supernodes::Vector{Vector{Int}}
 
     # column_supernodes, stored as a vector of vectors of sparse supernodal vectors representing the hcated basis functions in terms of the row_supernodes
-    # The outermost vector loops over the different colos of the multicolor ordering.
+    # The outermost vector loops over the different colors of the multicolor ordering.
     column_supernodes::Vector{Vector{SupernodalSparseVector{RT}}}
     
     # The buffer underlying nnz
     buffer::Vector{RT}
 end
+
+# A function that takes in a  supernodal factorization and 
+# integers m, n that give the number of (block) rows and columns,
+# and returns a supernodal column that can be used as scratch space when multiplying the factorizatoin with a supernodal column.
+function create_scratch_space(𝐅::SupernodalFactorization{RT}, m, n) where RT
+    column_lengths = size.(vcat(𝐅.column_supernodes...)[1 : m], 2)
+    delims = [1; cumsum(column_lengths) .+ 1]
+    column_supernodes = [Vector{Int}(1 : (delims[end] - 1))[delims[k] : (delims[k + 1] - 1)] for k = 1 : m]
+    @assert all(length.(column_supernodes) == column_lengths)
+return SupernodalVector(zeros(RT, delims[end] - 1, n), column_supernodes)
+end
+
+function sparse(𝐅::SupernodalFactorization)
+    # vertically concatenates the vectors corresponding to the different colors,
+    # then horizontally concatenates the resulting matrices
+    return hcat(SparseMatrixCSC.(vcat(𝐅.column_supernodes...))...)
+end
+
+# TODO: provide way to extract sparse matrix representative from
+# supernodal factorization
+# function sparse
 
 # Constructor for the supernodal factorization
 function SupernodalFactorization{RT}(I::AbstractVector{Int}, J::AbstractVector{Int}, row_supernodes::AbstractVector{<:AbstractVector{Int}}, column_supernodes::AbstractVector{<:AbstractVector{SupernodalSparseVector{RT}}}) where {RT<:Real}
@@ -245,7 +283,7 @@ function SupernodalFactorization(multicolor_ordering::AbstractVector{<:AbstractV
 end
 
 function supernodal_size(𝐋::SupernodalFactorization)
-    return (length(𝐋.row_supernodes), length(𝐋.diag))
+    return (length(𝐋.column_supernodes), length(𝐋.row_supernodes))
 end
 
 function supernodal_size(𝐋::SupernodalFactorization, dim)
@@ -253,19 +291,19 @@ function supernodal_size(𝐋::SupernodalFactorization, dim)
 end
 
 function inner_lengths(𝐋::SupernodalFactorization)
-    return length.(𝐋.diag)
+    return length.(𝐋.row_supernodes)
 end
 
 
 # Multiply the matrix implied by a supernodal factorization with a supernodal vector,
-function partial_multiply!(out::SupernodalVector, 𝐋::SupernodalFactorization, in::SupernodalVector; max_k=supernodal_size(𝐋, 2), scratch=SupernodalVector(zeros(eltype(𝐋.buffer), sum(inner_lengths(𝐋)[1 : max_k]), size(data(in)[1], 2)), inner_lengths(𝐋)[1 : max_k]))
+function partial_multiply!(out::SupernodalVector, 𝐋::SupernodalFactorization, in::SupernodalVector; max_k=supernodal_size(𝐋, 2), scratch=create_scratch_space(𝐋, max_k, size(in, 2)))
 
     scratch.buffer .= 0.0
     # computing scratch = 𝐋' * in
     for k = 1 : max_k
         for i_index = getcolptr(𝐋)[k] : (getcolptr(𝐋)[k + 1] - 1)
             i = rowvals(𝐋)[i_index]
-            mul!(scratch[k], nonzeros(𝐋)[i_index]', in[i], 1, 1)
+            mul!(scratch.data[k], nonzeros(𝐋)[i_index]', in.data[i], 1, 1)
         end
     end
 
@@ -274,23 +312,20 @@ function partial_multiply!(out::SupernodalVector, 𝐋::SupernodalFactorization,
     for k = 1 : max_k
         for i_index = getcolptr(𝐋)[k] : (getcolptr(𝐋)[k + 1] - 1)
             i = rowvals(𝐋)[i_index]
-            mul!(out[i], nonzeros(𝐋)[i_index], scratch[k], 1, 1)
+            mul!(out.data[i], nonzeros(𝐋)[i_index], scratch.data[k], 1, 1)
         end
     end
 end
 
+
 # scatters the Supernodal Column 𝐌 into the columns of 𝐋 given by color
-function scatter!(𝐋::SupernodalFactorization, 𝐌::SupernodalVector ,color::AbstractVector{Int}, ) 
+function scatter_column!(𝐋::SupernodalFactorization, 𝐌::SupernodalVector,color::AbstractVector{Int}) 
     # We check that each children supernode appears at most once in the sparsity pattern of the columns of the color
     @assert (rowvals(𝐋)[getcolptr(𝐋)[color[1]]: getcolptr(𝐋)[color[end]]]) == unique(rowvals(𝐋)[getcolptr(𝐋)[color[1]]: getcolptr(𝐋)[color[end]]])
     for index = getcolptr(𝐋)[color[1]] : (getcolptr(𝐋)[color[end] + 1] - 1)
         # Setting the nzval
-        nonzeros(𝐋)[index] .= view(𝐌[rowvals(𝐋)[index]], :, 1 : size(nonzeros(𝐋)[index], 2))
+        nonzeros(𝐋)[index] .= view(𝐌.data[rowvals(𝐋)[index]], :, 1 : size(nonzeros(𝐋)[index], 2))
     end
-    # Part below seems to be unnecessary? 
-    # Setting the diagonal values 
-    # TODO: Add memory of supernodes to SupernodalFactorization
-    # matrix_𝐌 = Matrix(𝐌)
 end
 
 # Finish function that creates the measurement matrix
@@ -324,4 +359,25 @@ function measure(Θ, 𝐌::AbstractVector{<:SupernodalVector}, row_supernodes)
         𝐎[k] = SupernodalVector(Θ * Matrix(𝐌[k]), row_supernodes)
     end
     return 𝐎
+end
+
+# function that uses an existing supernodal factorization and a vector of measurements to reconstruct the solver from which the measurements arose.
+function reconstruct!(𝐅::SupernodalFactorization{RT}, 𝐎::Vector{<:SupernodalVector{RT}}, multicolor_ordering) where RT<:AbstractFloat
+    @assert length(𝐎) == supernodal_size(𝐅, 1) 
+
+    colors = cumsum(length.(multicolor_ordering))
+    prepend!(colors, [0])
+    colors .+= 1
+    colors = [colors[k] : (colors[k + 1] - 1) for k = 1 : (length(colors) - 1)] 
+
+    for k = 1 : length(𝐎)
+        # create copy of vector to be used in the partial multiply
+        temp = copy(𝐎[k])
+        fill!(temp.buffer, 0.0)
+
+        # doing a partial multiply up to the last color
+        partial_multiply!(temp, 𝐅, 𝐎[k]; max_k=colors[k][1] - 1)
+        𝐎[k].data .- temp.data
+        scatter_column!(𝐅, 𝐎[k], colors[k])
+    end
 end
