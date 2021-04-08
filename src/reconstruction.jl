@@ -215,10 +215,27 @@ function create_scratch_space(𝐅::SupernodalFactorization{RT}, m, n) where RT
 return SupernodalVector(zeros(RT, delims[end] - 1, n), column_supernodes)
 end
 
-function sparse(𝐅::SupernodalFactorization)
+function SparseMatrixCSC(𝐅::SupernodalFactorization)
     # vertically concatenates the vectors corresponding to the different colors,
     # then horizontally concatenates the resulting matrices
-    return hcat(SparseMatrixCSC.(vcat(𝐅.column_supernodes...))...)
+    row_supernodes = 𝐅.row_supernodes
+    column_lengths = size.(vcat(𝐅.column_supernodes...), 2)
+    delims = [1; cumsum(column_lengths) .+ 1]
+    column_supernodes = [Vector{Int}(1 : (delims[end] - 1))[delims[k] : (delims[k + 1] - 1)] for k = 1 : size(𝐅.data, 2)]
+
+    I = Int[]
+    J = Int[]
+    V = eltype(eltype(𝐅.data))[]
+    for (i, j, mat) in zip(findnz(𝐅.data)...)
+        @show size(mat)
+        for cart in CartesianIndices(mat)
+            (i_local, j_local) = Tuple(cart)
+            push!(I, row_supernodes[i][i_local])
+            push!(J, column_supernodes[j][j_local])
+            push!(V, mat[i_local, j_local])
+        end
+    end
+    return sparse(I, J, V)
 end
 
 # TODO: provide way to extract sparse matrix representative from

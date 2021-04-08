@@ -49,7 +49,7 @@
         𝐎 = CompressingSolvers.measure(inv(Matrix(A)), 𝐌, 𝐅.row_supernodes) 
 
         CompressingSolvers.reconstruct!(𝐅, 𝐎, multicolor_ordering)
-        L = sparse(𝐅)
+        L = CompressingSolvers(𝐅)
     end
 
 end

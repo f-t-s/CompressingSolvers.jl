@@ -15,6 +15,6 @@ A, domains, scales, basis_functions, basis_supernodes, domain_supernodes, multic
 𝐇 = hcat(SparseMatrixCSC.(vcat(𝐅.column_supernodes...))...)
 
 CompressingSolvers.reconstruct!(𝐅, 𝐎, multicolor_ordering)
-L = sparse(𝐅)
+L = SparseMatrixCSC(𝐅)
 
 @show norm(L * L' - inv(Matrix(A)))
