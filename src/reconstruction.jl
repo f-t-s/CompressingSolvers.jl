@@ -44,7 +44,7 @@ struct SupernodalVector{RT} <: AbstractSupernodalArray{RT,1}
 end
 
 function copy(in::SupernodalVector{RT}) where RT
-    return SupernodalVector{RT}(copy(in.data), copy(in.buffer), copy(in.row_supernodes))
+    return SupernodalVector(Matrix(in), copy(in.row_supernodes))
 end 
 
 function fill!(in::SupernodalVector, a)
