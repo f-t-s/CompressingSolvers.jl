@@ -227,7 +227,6 @@ function SparseMatrixCSC(𝐅::SupernodalFactorization)
     J = Int[]
     V = eltype(eltype(𝐅.data))[]
     for (i, j, mat) in zip(findnz(𝐅.data)...)
-        @show size(mat)
         for cart in CartesianIndices(mat)
             (i_local, j_local) = Tuple(cart)
             push!(I, row_supernodes[i][i_local])
@@ -300,7 +299,7 @@ function SupernodalFactorization(multicolor_ordering::AbstractVector{<:AbstractV
 end
 
 function supernodal_size(𝐋::SupernodalFactorization)
-    return (length(𝐋.column_supernodes), length(𝐋.row_supernodes))
+    return (length(𝐋.row_supernodes), length(vcat(𝐋.column_supernodes...)))
 end
 
 function supernodal_size(𝐋::SupernodalFactorization, dim)
@@ -341,8 +340,7 @@ function normalize_column!(𝐅::SupernodalFactorization, k)
     column = SparseMatrixCSC(SupernodalSparseVector(𝐅.data[:, k], Vector{eltype(𝐅.buffer)}(undef, 0), 𝐅.row_supernodes))
     # TODO: still strange that matrices are so far from Hermitian, might be a bug?
     D = (Matrix(SparseMatrixCSC(vcat(𝐅.column_supernodes...)[k])' * column))
-    @show norm(D - Hermitian(D))
-    LD = cholesky(Hermitian(D)).L
+    LD = cholesky(Hermitian(D)).L'
     for s in findnz(𝐅.data[:, k])[2]
         s .= s / LD
     end
@@ -394,7 +392,7 @@ end
 
 # function that uses an existing supernodal factorization and a vector of measurements to reconstruct the solver from which the measurements arose.
 function reconstruct!(𝐅::SupernodalFactorization{RT}, 𝐎::Vector{<:SupernodalVector{RT}}, multicolor_ordering) where RT<:AbstractFloat
-    @assert length(𝐎) == supernodal_size(𝐅, 1) 
+    @assert length(𝐎) == supernodal_size(𝐅, 2) 
 
     colors = cumsum(length.(multicolor_ordering))
     prepend!(colors, [0])
@@ -408,9 +406,10 @@ function reconstruct!(𝐅::SupernodalFactorization{RT}, 𝐎::Vector{<:Supernod
 
         # doing a partial multiply up to the last color
         partial_multiply!(temp, 𝐅, 𝐎[k]; max_k=colors[k][1] - 1)
-        𝐎[k].data .- temp.data
+        𝐎[k].buffer .= 𝐎[k].buffer .- temp.buffer
         scatter_column!(𝐅, 𝐎[k], colors[k])
         # normalizing by diagonal square root
+        # Temporarily removing the
         for l in colors[k]
             normalize_column!(𝐅, l)
         end

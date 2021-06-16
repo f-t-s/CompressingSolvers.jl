@@ -24,11 +24,24 @@
 
     @testset "SupernodalFactorization" begin
         # Setting up the test domains
-        domains, scales, basis_functions = CompressingSolvers.subdivision_2d(5)
+        domains, scales, basis_functions = CompressingSolvers.subdivision_2d(2)
         ρ = 3.0
         basis_supernodes, domain_supernodes, multicolor_ordering = CompressingSolvers.supernodal_aggregation_square(domains, scales, basis_functions, ρ)
 
-        CompressingSolvers.SupernodalFactorization(multicolor_ordering, domain_supernodes)
+        𝐅 = CompressingSolvers.SupernodalFactorization(multicolor_ordering, domain_supernodes)
+
+        # setting the nonzero value of 𝐅 to a random buffer
+        𝐅.buffer .= rand(length(𝐅.buffer))
+        in = CompressingSolvers.SupernodalVector(rand(sum(length.(𝐅.row_supernodes)), 10), 𝐅.row_supernodes)
+
+        # preallocate output
+        out = copy(in) 
+
+        # testing the full multiply
+        CompressingSolvers.partial_multiply!(out, 𝐅, in)
+
+        L = SparseMatrixCSC(𝐅)
+        @test L * L' * Matrix(in) ≈ Matrix(out)
     end
 
     @testset "reconstruction" begin
@@ -49,7 +62,7 @@
         𝐎 = CompressingSolvers.measure(inv(Matrix(A)), 𝐌, 𝐅.row_supernodes) 
 
         CompressingSolvers.reconstruct!(𝐅, 𝐎, multicolor_ordering)
-        L = CompressingSolvers(𝐅)
+        L = SparseMatrixCSC(𝐅)
     end
 
 end

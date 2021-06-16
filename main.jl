@@ -4,7 +4,7 @@ using LinearAlgebra
 
 # Setting up the test domains
 ρ = 1000000000
-A, domains, scales, basis_functions, basis_supernodes, domain_supernodes, multicolor_ordering = CompressingSolvers.FD_Laplacian_subdivision_2d(3, ρ);
+A, domains, scales, basis_functions, basis_supernodes, domain_supernodes, multicolor_ordering = CompressingSolvers.FD_Laplacian_subdivision_2d(2, ρ);
 
 𝐅 = CompressingSolvers.SupernodalFactorization(multicolor_ordering, domain_supernodes)
 
