@@ -1,4 +1,4 @@
-import LinearAlgebra: Matrix, Cholesky, cholesky, mul!, ldiv!, Hermitian
+import LinearAlgebra: Matrix, Cholesky, cholesky, mul!, ldiv!, Hermitian, Factorization
 import Base: size, getindex, enumerate, iterate, copy, fill!
 import SparseArrays: SparseVector, SparseMatrixCSC, nonzeros, rowvals, getcolptr, sparse, sparsevec, nnz
 # Defining an alias for matrices that are realized as resized contiguous view into a buffer
@@ -391,6 +391,16 @@ function measure(Θ, 𝐌::AbstractVector{<:SupernodalVector}, row_supernodes)
     end
     return 𝐎
 end
+
+# computes a vector of supernodal vectors 𝐎 from a linear operator Θ and a measurement matrix 𝐌
+function measure(A::Factorization, 𝐌::AbstractVector{<:SupernodalVector}, row_supernodes) 
+    𝐎 = Vector{eltype(𝐌)}(undef, length(𝐌))
+    for k = 1 : length(𝐌)
+        𝐎[k] = SupernodalVector(A \ Matrix(𝐌[k]), row_supernodes)
+    end
+    return 𝐎
+end
+
 
 # function that uses an existing supernodal factorization and a vector of measurements to reconstruct the solver from which the measurements arose.
 function reconstruct!(𝐅::SupernodalFactorization{RT}, 𝐎::Vector{<:SupernodalVector{RT}}, 𝐌::Vector{<:SupernodalVector{RT}}, multicolor_ordering) where RT<:AbstractFloat

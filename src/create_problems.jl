@@ -53,7 +53,11 @@ end
 
 # function for selecting the aggregation centers in the square 
 function aggregation_centers_square(ρh) 
-    ticks = ρh : (ρh) : (1 - ρh)
+    if ρh < Inf
+        ticks = ρh : (ρh) : (1 - ρh)
+    else
+        ticks = [zero(ρh)]
+    end
     # if ticks is empty, add a single entry to it, resulting in all nodes being summarized in the same supernode
     if isempty(ticks) 
         ticks = [zero(ρh)]
@@ -67,8 +71,10 @@ function supernodal_aggregation_square(domains, scales, basis_functions, ρ)
     ##################################################################
     # The supernodes corresponding to different columns of 𝐋
     basis_supernodes = construct_supernodes.(aggregation_centers_square.(ρ * scales), basis_functions)
-   # Supernodes corresponding to different rows of 𝐋
-    domain_supernodes = vcat(construct_supernodes.(aggregation_centers_square.(ρ * scales), gather_hierarchy(domains, true))...)
+    # Supernodes corresponding to different rows of 𝐋
+    # Since we choose elementary=true in gather_hierarchy, only the last entry of the output of gather_hierarchy is nonempty,
+    # Thus, the line below only produces domain_supernodes corresponding to the finest scale.
+    domain_supernodes = vcat(construct_supernodes.(aggregation_centers_square.(ρ * scales / 3), gather_hierarchy(domains, true))...)
     # Multicolor ordering 
     multicolor_ordering = construct_multicolor_ordering(basis_supernodes, ρ * scales)
     return vcat(basis_supernodes...), domain_supernodes, multicolor_ordering
@@ -126,5 +132,6 @@ function FD_Laplacian_subdivision_2d(q, ρ = 2.0, α = x -> 1)
     # The supernodes corresponding to different columns of 𝐋
     basis_supernodes, domain_supernodes, multicolor_ordering = supernodal_aggregation_square(domains, scales, basis_functions, ρ)
 
-    return A, domains, scales, basis_functions, basis_supernodes, domain_supernodes, multicolor_ordering
+    return A, domains, scales, basis_functions, basis_supernodes, domain_supernodes, multicolor_ordering, fine_domains
+
 end
