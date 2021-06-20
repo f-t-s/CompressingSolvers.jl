@@ -53,7 +53,7 @@ end
 
 # function for selecting the aggregation centers in the square 
 function aggregation_centers_square(ρh) 
-    ticks = ρh : (2 * ρh) : (1 - ρh)
+    ticks = ρh : (ρh) : (1 - ρh)
     # if ticks is empty, add a single entry to it, resulting in all nodes being summarized in the same supernode
     if isempty(ticks) 
         ticks = [zero(ρh)]
@@ -70,7 +70,7 @@ function supernodal_aggregation_square(domains, scales, basis_functions, ρ)
    # Supernodes corresponding to different rows of 𝐋
     domain_supernodes = vcat(construct_supernodes.(aggregation_centers_square.(ρ * scales), gather_hierarchy(domains, true))...)
     # Multicolor ordering 
-    multicolor_ordering = construct_multicolor_ordering(basis_supernodes, 1.5 * ρ * scales)
+    multicolor_ordering = construct_multicolor_ordering(basis_supernodes, ρ * scales)
     return vcat(basis_supernodes...), domain_supernodes, multicolor_ordering
 end
 

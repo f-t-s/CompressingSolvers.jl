@@ -272,6 +272,8 @@ end
 # Constructs a supernodal factorization from a multicolor ordering 
 function SupernodalFactorization(multicolor_ordering::AbstractVector{<:AbstractVector{SuperNodeBasis{PT,RT}}}, domain_supernodes::AbstractVector{<:SuperNodeDomain}, tree_function=KDTree) where {PT,RT<:Real}
     row_supernodes = [id.(domains(domain_supernodes[k])) for k = 1 : length(domain_supernodes)]
+    # Constructing the column supernodes
+    # The ordering implied by the row_supernodes
     column_supernodes = Vector{Vector{SupernodalSparseVector{RT}}}(undef, length(multicolor_ordering))
     for k = 1 : length(column_supernodes)
         column_supernodes[k] = Vector{SupernodalSparseVector{RT}}(undef, length(multicolor_ordering[k]))
@@ -336,7 +338,7 @@ end
 # A function that computes the Cholesky factorization of the k-"diagonal" block of 𝐅 and 
 # divides the corresponding column by it
 function normalize_column!(𝐅::SupernodalFactorization, k)
-    # The constructor of does not need the buffer, so we set it to undef
+    # The constructor of the sparse matrix does not need the buffer, so we set it to undef
     column = SparseMatrixCSC(SupernodalSparseVector(𝐅.data[:, k], Vector{eltype(𝐅.buffer)}(undef, 0), 𝐅.row_supernodes))
     # TODO: still strange that matrices are so far from Hermitian, might be a bug?
     D = (Matrix(SparseMatrixCSC(vcat(𝐅.column_supernodes...)[k])' * column))
@@ -391,9 +393,11 @@ function measure(Θ, 𝐌::AbstractVector{<:SupernodalVector}, row_supernodes)
 end
 
 # function that uses an existing supernodal factorization and a vector of measurements to reconstruct the solver from which the measurements arose.
-function reconstruct!(𝐅::SupernodalFactorization{RT}, 𝐎::Vector{<:SupernodalVector{RT}}, multicolor_ordering) where RT<:AbstractFloat
-    @assert length(𝐎) == supernodal_size(𝐅, 2) 
+function reconstruct!(𝐅::SupernodalFactorization{RT}, 𝐎::Vector{<:SupernodalVector{RT}}, 𝐌::Vector{<:SupernodalVector{RT}}, multicolor_ordering) where RT<:AbstractFloat
+    # TODO: replace with a better assertion? This one is not true, in general
+    # @assert length(𝐎) == supernodal_size(𝐅, 2) 
 
+    # we are forming an 
     colors = cumsum(length.(multicolor_ordering))
     prepend!(colors, [0])
     colors .+= 1
@@ -405,7 +409,7 @@ function reconstruct!(𝐅::SupernodalFactorization{RT}, 𝐎::Vector{<:Supernod
         fill!(temp.buffer, 0.0)
 
         # doing a partial multiply up to the last color
-        partial_multiply!(temp, 𝐅, 𝐎[k]; max_k=colors[k][1] - 1)
+        partial_multiply!(temp, 𝐅, 𝐌[k]; max_k=colors[k][1] - 1)
         𝐎[k].buffer .= 𝐎[k].buffer .- temp.buffer
         scatter_column!(𝐅, 𝐎[k], colors[k])
         # normalizing by diagonal square root

@@ -32,7 +32,6 @@ function basis_functions(node::SuperNodeBasis)
     return node.basis_functions
 end
 
-
 function center(in::AbstractSuperNode)
     return in.center
 end
@@ -74,7 +73,7 @@ end
 
 function construct_multicolor_ordering(input_supernodes::AbstractArray{<:SuperNodeBasis}, ρh, tree_function=KDTree)
     # Vector (colors) of Vectors of supernodes  
-    out = Vector{typeof(input_supernodes)}(undef, 0)
+    out = typeof(input_supernodes)[]
     assigned = falses(length(input_supernodes))
     # While not all nodes are assigned to a color
     tree = tree_function(center.(input_supernodes))
@@ -90,7 +89,7 @@ function construct_multicolor_ordering(input_supernodes::AbstractArray{<:SuperNo
                 # Make note that node was assigned to color
                 assigned[k] = true
                 # Make note that its neighbors are not allowed to be assigned to the same color
-                ruled_out[inrange(tree, center(node), ρh)] .= true
+                ruled_out[inrange(tree, center(node), 2 * ρh)] .= true
             end
         end
     end
