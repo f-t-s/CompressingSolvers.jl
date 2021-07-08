@@ -69,8 +69,6 @@ function add_children(domain::DT, new_children::AbstractVector{DT}) where DT<:Do
     return Domain(vcat(children(domain), new_children), id(domain))
 end
 
-
-
 # construct an elementary domain from a coordinate
 function Domain(input_coordinates::PT, id, weight=1) where {PT<:AbstractVector}
     return Domain{PT}(input_coordinates, weight, Vector{Domain{PT}}(undef, 0), id)

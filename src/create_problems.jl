@@ -65,21 +65,6 @@ function aggregation_centers_square(ρh)
     return SVector{2}.([[x; y] for x in ticks for y in ticks])
 end
 
-function supernodal_aggregation_square(domains, scales, basis_functions, ρ)
-    ##################################################################
-    # Constructing supernodes 
-    ##################################################################
-    # The supernodes corresponding to different columns of 𝐋
-    basis_supernodes = construct_supernodes.(aggregation_centers_square.(ρ * scales), basis_functions)
-    # Supernodes corresponding to different rows of 𝐋
-    # Since we choose elementary=true in gather_hierarchy, only the last entry of the output of gather_hierarchy is nonempty,
-    # Thus, the line below only produces domain_supernodes corresponding to the finest scale.
-    domain_supernodes = vcat(construct_supernodes.(aggregation_centers_square.(ρ * scales / 3), gather_hierarchy(domains, true))...)
-    # Multicolor ordering 
-    multicolor_ordering = construct_multicolor_ordering(basis_supernodes, ρ * scales)
-    return vcat(basis_supernodes...), domain_supernodes, multicolor_ordering
-end
-
 # Create a finite difference Laplacian problem on a quadratic mesh using sudivision, with dirichlet boundary conditions.
 # q: total number of subdivisions, leading to a number dofs given by 2^{qd}
 # α: the coefficient function. an edge between x and y will have conductivity (α(x) + α(y)) / 2
@@ -127,11 +112,10 @@ function FD_Laplacian_subdivision_2d(q, ρ = 2.0, α = x -> 1)
  
 
     ##################################################################
-    # Constructing supernodes 
+    # Constructing the multicolor ordering
     ##################################################################
     # The supernodes corresponding to different columns of 𝐋
-    basis_supernodes, domain_supernodes, multicolor_ordering = supernodal_aggregation_square(domains, scales, basis_functions, ρ)
+    multicolor_ordering = construct_multicolor_ordering(basis_functions, ρ * scales)
 
-    return A, domains, scales, basis_functions, basis_supernodes, domain_supernodes, multicolor_ordering, fine_domains
-
+    return A, domains, scales, basis_functions, multicolor_ordering, fine_domains
 end

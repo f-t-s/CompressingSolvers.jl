@@ -1,3 +1,5 @@
+using LinearAlgebra: Factorization
+
 function compute_relative_error(L::SparseMatrixCSC, A::Factorization, max_iter=100)
     x = randn(size(L, 1))
     x = x / norm(x)

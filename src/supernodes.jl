@@ -55,7 +55,6 @@ end
 
 # Construct supernodes about aggregation centers provided by the user
 # centers is the vector of centers of basis functions, and 
-# TODO: need to use all elementary domains!!!
 function construct_supernodes(aggregation_centers, domains::AbstractVector{<:Domain}, tree_function=KDTree)
     @assert !isempty(aggregation_centers)
     # Constructing themembership lists of the different supernodes, by assigning them to the closest aggregation center
