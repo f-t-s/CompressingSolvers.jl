@@ -1,4 +1,5 @@
 module CompressingSolvers
+using Base: Order
 include("./domains.jl")
 include("./basis_functions.jl")
 include("./multicolor_ordering.jl")

@@ -1,3 +1,4 @@
+using LinearAlgebra: Matrix
 using CompressingSolvers
 using LinearAlgebra
 using Test

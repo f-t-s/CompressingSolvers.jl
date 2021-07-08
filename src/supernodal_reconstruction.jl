@@ -340,7 +340,6 @@ end
 function normalize_column!(𝐅::SupernodalFactorization, k)
     # The constructor of the sparse matrix does not need the buffer, so we set it to undef
     column = SparseMatrixCSC(SupernodalSparseVector(𝐅.data[:, k], Vector{eltype(𝐅.buffer)}(undef, 0), 𝐅.row_supernodes))
-    # TODO: still strange that matrices are so far from Hermitian, might be a bug?
     D = (Matrix(SparseMatrixCSC(vcat(𝐅.column_supernodes...)[k])' * column))
     LD = cholesky(Hermitian(D)).L'
     for s in findnz(𝐅.data[:, k])[2]
