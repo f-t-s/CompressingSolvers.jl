@@ -5,6 +5,7 @@ version = "0.1.0"
 
 [deps]
 DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
+Distances = "b4f34e82-e78d-54a5-968a-f98e89d6e8f7"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 MKLSparse = "0c723cd3-b8cd-5d40-b370-ba682dde9aae"
 NearestNeighbors = "b8a86587-4115-5ab1-83bc-aa920d37bbce"

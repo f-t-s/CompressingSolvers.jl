@@ -16,6 +16,6 @@ function compute_relative_error(L::SparseMatrixCSC, A::Factorization, max_iter=1
         x .= x / norm(x)
         # @show x' * (A \ x)
     end
-    nrm = x' * (A \ x)
+    @show nrm = x' * (A \ x)
     return abs(err) / nrm
 end
