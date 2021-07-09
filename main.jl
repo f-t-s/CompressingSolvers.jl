@@ -8,13 +8,13 @@ using MKLSparse
 ρ = 15.1
 # ρ = Inf
 q = 8
-A, coarse_domains, scales, basis_functions, multicolor_ordering, fine_domains = CompressingSolvers.FD_Laplacian_subdivision_2d(q, ρ)
+A, coarse_domains, scales, basis_functions, multicolor_ordering, fine_domains, tree_function = CompressingSolvers.FD_Laplacian_subdivision_2d(q, ρ)
 
 measurement_matrix = CompressingSolvers.form_measurement_matrix(multicolor_ordering)
 @show size(measurement_matrix)
 @time measurement_results = CompressingSolvers.measure(cholesky(A), measurement_matrix)
 
-@time L = CompressingSolvers.reconstruct(multicolor_ordering, CompressingSolvers.center.(fine_domains), measurement_matrix, measurement_results)
+@time L = CompressingSolvers.reconstruct(multicolor_ordering, CompressingSolvers.center.(fine_domains), measurement_matrix, measurement_results, tree_function)
 
 # @show opnorm(inv(Matrix(A)) - L * L') / opnorm(inv(Matrix(A)))
 @show CompressingSolvers.compute_relative_error(L, cholesky(A), 200)

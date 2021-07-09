@@ -8,7 +8,7 @@ using LinearAlgebra: dot, Factorization, mul!
 # given by colors
 function sparsity_set(colors,  
                       row_centers::AbstractVector,
-                      tree_function=KDTree)
+                      tree_function)
     I = Int[]
     J = Int[]
     offset = 0
@@ -59,7 +59,7 @@ function update_active_L(active_nzval, active_colptr, active_rowval, L, color_ra
 end
 
 # ordering is a multicolor ordering of basis functions
-function reconstruct(ordering, row_centers, measurement_matrix, measurement_results, tree_function=KDTree)
+function reconstruct(ordering, row_centers, measurement_matrix, measurement_results, tree_function)
     @assert length(ordering) == size(measurement_results, 2)
     I, J = sparsity_set(ordering, row_centers, tree_function)
     L = sparse(I, J, zeros(eltype(measurement_results), length(I)))
@@ -92,5 +92,7 @@ function reconstruct(ordering, row_centers, measurement_matrix, measurement_resu
         # update the offset that allows to assign column indices to entries of a given color
         offset += length(ordering[k])
     end
+
+
     return SparseMatrixCSC(size(L, 1), offset, active_colptr, active_rowval, active_nzval)
 end

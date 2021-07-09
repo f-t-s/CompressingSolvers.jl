@@ -270,7 +270,7 @@ function SupernodalFactorization{RT}(I::AbstractVector{Int}, J::AbstractVector{I
 end
 
 # Constructs a supernodal factorization from a multicolor ordering 
-function SupernodalFactorization(multicolor_ordering::AbstractVector{<:AbstractVector{SuperNodeBasis{PT,RT}}}, domain_supernodes::AbstractVector{<:SuperNodeDomain}, tree_function=KDTree) where {PT,RT<:Real}
+function SupernodalFactorization(multicolor_ordering::AbstractVector{<:AbstractVector{SuperNodeBasis{PT,RT}}}, domain_supernodes::AbstractVector{<:SuperNodeDomain}, tree_function) where {PT,RT<:Real}
     row_supernodes = [id.(domains(domain_supernodes[k])) for k = 1 : length(domain_supernodes)]
     # Constructing the column supernodes
     # The ordering implied by the row_supernodes

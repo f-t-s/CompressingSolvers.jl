@@ -75,6 +75,7 @@ function FD_Laplacian_subdivision_2d(q, ρ = 2.0, α = x -> 1)
     Δx = Δy = 1 / (n + 1)
 
 
+
     # actual multiscale domains are provided by subdivision_2d. fine_domains only 
     # there fore the 
 
@@ -109,13 +110,17 @@ function FD_Laplacian_subdivision_2d(q, ρ = 2.0, α = x -> 1)
         A[i, i] += 1.0
     end
 
- 
+    # constructing the tree function
+    function tree_function(x)
+        return KDTree(x)
+    end
+
 
     ##################################################################
     # Constructing the multicolor ordering
     ##################################################################
     # The supernodes corresponding to different columns of 𝐋
-    multicolor_ordering = construct_multicolor_ordering(basis_functions, ρ * scales)
+    multicolor_ordering = construct_multicolor_ordering(basis_functions, ρ * scales, tree_function)
 
-    return A, domains, scales, basis_functions, multicolor_ordering, fine_domains
+    return A, domains, scales, basis_functions, multicolor_ordering, fine_domains, tree_function
 end

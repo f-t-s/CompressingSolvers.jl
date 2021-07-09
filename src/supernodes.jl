@@ -38,7 +38,7 @@ end
 
 # Construct supernodes about aggregation centers provided by the user
 # centers is the vector of centers of basis functions, and 
-function construct_supernodes(aggregation_centers, basis_functions::AbstractVector{BasisFunction{PT,RT}}, tree_function=KDTree) where {PT<:AbstractVector{<:Real},RT<:Real}
+function construct_supernodes(aggregation_centers, basis_functions::AbstractVector{BasisFunction{PT,RT}}, tree_function) where {PT<:AbstractVector{<:Real},RT<:Real}
     @assert !isempty(aggregation_centers)
     # allocating output array
     # Constructing themembership lists of the different supernodes, by assigning them to the closest aggregation center
@@ -55,7 +55,7 @@ end
 
 # Construct supernodes about aggregation centers provided by the user
 # centers is the vector of centers of basis functions, and 
-function construct_supernodes(aggregation_centers, domains::AbstractVector{<:Domain}, tree_function=KDTree)
+function construct_supernodes(aggregation_centers, domains::AbstractVector{<:Domain}, tree_function)
     @assert !isempty(aggregation_centers)
     # Constructing themembership lists of the different supernodes, by assigning them to the closest aggregation center
     member_lists = construct_member_lists(nn(tree_function(aggregation_centers), center.(domains))[1])
@@ -70,7 +70,7 @@ function construct_supernodes(aggregation_centers, domains::AbstractVector{<:Dom
     return out 
 end
 
-function construct_multicolor_ordering(input_supernodes::AbstractArray{<:SuperNodeBasis}, ρh, tree_function=KDTree)
+function construct_multicolor_ordering(input_supernodes::AbstractArray{<:SuperNodeBasis}, ρh, tree_function)
     # Vector (colors) of Vectors of supernodes  
     out = typeof(input_supernodes)[]
     assigned = falses(length(input_supernodes))
@@ -96,7 +96,7 @@ function construct_multicolor_ordering(input_supernodes::AbstractArray{<:SuperNo
 end
 
 # function that can directly take an array of arrays (corresponding to different scales) as supernodes
-function construct_multicolor_ordering(input_supernodes::AbstractArray{<:AbstractArray{<:SuperNodeBasis}}, ρh::AbstractArray{<:Real}, tree_function=KDTree)
+function construct_multicolor_ordering(input_supernodes::AbstractArray{<:AbstractArray{<:SuperNodeBasis}}, ρh::AbstractArray{<:Real}, tree_function)
     # Both lengths should be equal to total number of scales
     @assert length(ρh) == length(input_supernodes)
     q = length(ρh)
