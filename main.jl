@@ -2,11 +2,12 @@ using LinearAlgebra: Matrix
 using CompressingSolvers
 using SparseArrays
 using LinearAlgebra
+using MKLSparse
 
 # Setting up the test domains
 ρ = 15.1
 # ρ = Inf
-q = 7
+q = 8
 A, coarse_domains, scales, basis_functions, multicolor_ordering, fine_domains = CompressingSolvers.FD_Laplacian_subdivision_2d(q, ρ)
 
 measurement_matrix = CompressingSolvers.form_measurement_matrix(multicolor_ordering)

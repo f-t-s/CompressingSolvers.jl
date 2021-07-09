@@ -49,35 +49,48 @@ function measure(A::Factorization, measurement_matrix)
     return A \ measurement_matrix
 end
 
+function update_active_L(active_nzval, active_colptr, active_rowval, L, color_range)
+    added_indices_range = L.colptr[first(color_range)] : (L.colptr[last(color_range) + 1] - 1)
+    # appending the next elements to the active L
+    append!(active_nzval, view(L.nzval, added_indices_range))
+    append!(active_rowval, view(L.rowval, added_indices_range))
+    append!(active_colptr, view(L.colptr, (first(color_range) + 1) : (last(color_range) + 1)))
+    return SparseMatrixCSC(size(L, 1), last(color_range), active_colptr, active_rowval, active_nzval)
+end
+
 # ordering is a multicolor ordering of basis functions
 function reconstruct(ordering, row_centers, measurement_matrix, measurement_results, tree_function=KDTree)
     @assert length(ordering) == size(measurement_results, 2)
     I, J = sparsity_set(ordering, row_centers, tree_function)
     L = sparse(I, J, zeros(eltype(measurement_results), length(I)))
+    # L_empty = L[:, 1:0]
+    active_nzval, active_colptr, active_rowval = [f(L[:, 1 : 0]) for f in [getnzval, getcolptr, getrowval]]
     # going through the columns of the measurements  
     temp = zeros(size(L, 2))
     offset = 0 
     for k = 1 : size(measurement_results, 2)
         # Subtract the existing factor from measurement
         # TODO: avoid temporary allocations
-        temp_L = L[:, 1 : offset]
-        @views mul!(temp[1 : offset], temp_L', measurement_matrix[:, k])
-        @views mul!(measurement_results[:, k], temp_L, temp[1 : offset], -1, 1)
+        active_L = SparseMatrixCSC(size(L, 1), offset, active_colptr, active_rowval, active_nzval)
+
+        @views mul!(temp[1 : offset], active_L', measurement_matrix[:, k])
+        @views mul!(measurement_results[:, k], active_L, temp[1 : offset], -1, 1)
         # mul!(view(temp, 1 : (k - 1)), view(L, :, 1 : k - 1))
         # mul!(temp_col, view(L, :, 1 : k - 1)') 
 
         # the range of column indices corresponding to the present color
         color_range = ((1 + offset) : (length(ordering[k]) + offset))
+        active_L = update_active_L(active_nzval, active_colptr, active_rowval, L, color_range)
         # assign the values of the treated measurements to the corresponding columns of L
-        scatter_color!(L, view(measurement_results, :, k), color_range)
+        scatter_color!(active_L, view(measurement_results, :, k), color_range)
 
         # normalize the column
         for (k_column, basis_function) in zip(color_range, ordering[k])
-            @views L[:, k_column] ./= sqrt(dot(coefficients(basis_function), L[:, k_column]))
+            @views active_L[:, k_column] ./= sqrt(dot(coefficients(basis_function), active_L[:, k_column]))
         end
 
         # update the offset that allows to assign column indices to entries of a given color
         offset += length(ordering[k])
     end
-    return L
+    return SparseMatrixCSC(size(L, 1), offset, active_colptr, active_rowval, active_nzval)
 end
