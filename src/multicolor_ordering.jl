@@ -26,7 +26,7 @@ function construct_multicolor_ordering(input_array::AbstractVector, ρh::Real, t
         end
         # do furthest point sampling, finish if either the heap is empty, or there are no
         # sufficiently distant points left 
-        while !isempty(heap) && first(heap) >= 2 * ρh
+        while !isempty(heap) && first(heap) > 2 * ρh
             # get the id of the new pivot
             ~, top_id = top_with_handle(heap)
             # remove the new pivot from the heap

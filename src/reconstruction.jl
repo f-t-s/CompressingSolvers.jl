@@ -85,6 +85,7 @@ function reconstruct(ordering, row_centers, measurement_matrix, measurement_resu
         scatter_color!(active_L, view(measurement_results, :, k), color_range)
 
         # normalize the column
+
         for (k_column, basis_function) in zip(color_range, ordering[k])
             @views active_L[:, k_column] ./= sqrt(dot(coefficients(basis_function), active_L[:, k_column]))
         end
