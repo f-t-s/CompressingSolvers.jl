@@ -5,11 +5,12 @@ using LinearAlgebra
 using MKLSparse
 
 # Setting up the test domains
-ρ = 8.1
+ρ = 9.5
 # ρ = Inf
-q = 5
+q = 6
 # A, coarse_domains, scales, basis_functions, multicolor_ordering, fine_domains, tree_function = CompressingSolvers.FD_Laplacian_subdivision_2d(q, ρ)
-A, coarse_domains, scales, basis_functions, multicolor_ordering, fine_domains, tree_function = CompressingSolvers.FD_periodic_Laplacian_subdivision_2d(q, ρ)
+α(x) = rand()
+A, coarse_domains, scales, basis_functions, multicolor_ordering, fine_domains, tree_function = CompressingSolvers.FD_periodic_Laplacian_subdivision_2d(q, ρ, α)
 
 measurement_matrix = CompressingSolvers.form_measurement_matrix(multicolor_ordering)
 @show size(measurement_matrix)

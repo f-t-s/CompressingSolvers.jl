@@ -135,9 +135,7 @@ function FD_periodic_Laplacian_subdivision_2d(q, ρ = 2.0, α = x -> 1)
     n = 2 ^ q
     N = n ^ 2  
     Δx = Δy = 1 / (n + 1)
-
-
-
+    h = Δx
     # actual multiscale domains are provided by subdivision_2d. fine_domains only 
     # there fore the 
 
@@ -145,8 +143,36 @@ function FD_periodic_Laplacian_subdivision_2d(q, ρ = 2.0, α = x -> 1)
     # Construct the Laplace operator
     ##################################################################
     # Create the sparsity pattern of the Laplace operator 
-    # TODO: Add the wrap-around sparsity pattern
-    A = spdiagm(-(N - 1) => -ones(1), - (N - n) => -ones(n), -n => -ones(N-n), -1 => -ones(N-1) , 0 => 4 * ones(N), 1 => -ones(N-1), n => -ones(N-n), - (N - n) => -ones(n), (N - 1) => -ones(1)) # / Δx^2
+    lin_inds = LinearIndices((n, n))
+    row_inds = Int[]
+    col_inds = Int[]
+    S = Float64[]
+    for i in 1 : n, j in 1 : n
+        # adding self-interaction 2
+        push!(col_inds, lin_inds[mod(i - 1, n) + 1, mod(j - 1, n) + 1]) 
+        push!(row_inds, lin_inds[mod(i - 1, n) + 1, mod(j - 1, n) + 1]) 
+        push!(S, 4.0) 
+        # interaction to next element in i direction
+        push!(col_inds, lin_inds[mod(i - 1, n) + 1, mod(j - 1, n) + 1]) 
+        push!(row_inds, lin_inds[mod(i - 1 + 1, n) + 1, mod(j - 1, n) + 1]) 
+        push!(S, -1.0)
+
+        # interaction to previous element in i direction
+        push!(col_inds, lin_inds[mod(i - 1, n) + 1, mod(j - 1, n) + 1])
+        push!(row_inds, lin_inds[mod(i - 1 - 1, n) + 1, mod(j - 1, n) + 1]) 
+        push!(S, -1.0)
+
+        # interaction to next element in j direction
+        push!(col_inds, lin_inds[mod(i - 1, n) + 1, mod(j - 1, n) + 1]) 
+        push!(row_inds, lin_inds[mod(i - 1, n) + 1, mod(j - 1 + 1, n) + 1]) 
+        push!(S, -1.0)
+
+        # interaction to previous element in j direction
+        push!(col_inds, lin_inds[mod(i - 1, n) + 1, mod(j - 1, n) + 1]) 
+        push!(row_inds, lin_inds[mod(i - 1, n) + 1, mod(j - 1 - 1, n) + 1]) 
+        push!(S, -1.0)
+    end
+    A = sparse(row_inds, col_inds, S) / (h^2)
 
     # Important to multiply A.nzval and not A, to prevent dropping of structural nonzeros.
     A.nzval .*= 0
@@ -160,7 +186,7 @@ function FD_periodic_Laplacian_subdivision_2d(q, ρ = 2.0, α = x -> 1)
 
     for (i, j, val) in zip(findnz(A)...)
         # only look at edges
-        if i != j
+        if i < j
             val = (α(center(fine_domains[i])) + α(center(fine_domains[j]))) / 2 / Δx^2
             A[i, i] += val   
             A[j, j] += val
