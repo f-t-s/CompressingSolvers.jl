@@ -10,6 +10,10 @@ function BasisFunction(center, coefficients)
     return BasisFunction{typeof(center), eltype(coefficients)}(center, coefficients) 
 end
 
+function real_type(::Type{BasisFunction{PT, RT}})  where {PT, RT}
+    return RT
+end
+
 function center(bf::BasisFunction)
     return bf.center
 end
@@ -23,6 +27,8 @@ function create_basis_vector(id_arrays, weights, N)
     out_weights = vcat([weights[k] * one.(id_arrays[k]) for k = 1 : length(weights)]...)
     return sparsevec(vcat(id_arrays...), out_weights, N)
 end
+
+
 
 # Input are the coarsest-scale domains
 function compute_basis_functions(domains::AbstractVector{Domain{PT}}, N = maximum(id.(gather_descendants(domains)))) where PT<:AbstractVector{<:Real}

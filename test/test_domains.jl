@@ -1,3 +1,4 @@
+using NearestNeighbors: KDTree
 @testset "in 2d" begin
     h = 0.3
     Δx = 0.03
@@ -9,7 +10,7 @@
     # Construct a new "parent domain" that contains all children domains
     parent_domain = CompressingSolvers.Domain(domain_vector, length(domain_vector) + 1)
     # creating the hierarchy from the parent domain
-    hierarchy = CompressingSolvers.create_hierarchy((CompressingSolvers.children(parent_domain)), h, diams)
+    hierarchy = CompressingSolvers.create_hierarchy((CompressingSolvers.children(parent_domain)), h, diams, KDTree)
     # returns an array of arrays of domains
     all_domains = CompressingSolvers.gather_hierarchy(hierarchy)
     for k = 1 : length(all_domains)
@@ -39,7 +40,7 @@ end
     # Construct a new "parent domain" that contains all children domains
     parent_domain = CompressingSolvers.Domain(domain_vector, length(domain_vector) + 1)
     # creating the hierarchy from the parent domain
-    hierarchy = CompressingSolvers.create_hierarchy((CompressingSolvers.children(parent_domain)), h, diams)
+    hierarchy = CompressingSolvers.create_hierarchy((CompressingSolvers.children(parent_domain)), h, diams, KDTree)
     # returns an array of arrays of domains
     all_domains = CompressingSolvers.gather_hierarchy(hierarchy)
 
@@ -72,7 +73,7 @@ end
     # Construct a new "parent domain" that contains all children domains
     parent_domain = CompressingSolvers.Domain(domain_vector, length(domain_vector) + 1)
     # creating the hierarchy from the parent domain
-    hierarchy = CompressingSolvers.create_hierarchy((CompressingSolvers.children(parent_domain)), h, diams)
+    hierarchy = CompressingSolvers.create_hierarchy((CompressingSolvers.children(parent_domain)), h, diams, KDTree)
     # returns an array of arrays of domains
     all_domains = CompressingSolvers.gather_hierarchy(hierarchy)
     # Test whether there are no "spurious scales"
