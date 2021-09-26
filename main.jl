@@ -21,7 +21,7 @@ measurement_matrix = CompressingSolvers.form_measurement_matrix(multicolor_order
 @time L = CompressingSolvers.reconstruct(multicolor_ordering, CompressingSolvers.center.(fine_domains), measurement_matrix, measurement_results, tree_function)
 
 # @show opnorm(inv(Matrix(A)) - L * L') / opnorm(inv(Matrix(A)))
-@show CompressingSolvers.compute_relative_error(L, cholesky(A), 200)
+@show CompressingSolvers.compute_relative_error(L, cholesky(A), 200, 200)
 # 𝐅 = CompressingSolvers.SupernodalFactorization(multicolor_ordering, domain_supernodes);
 # 
 # 𝐌 = CompressingSolvers.create_measurement_matrix(multicolor_ordering, 𝐅.row_supernodes);
