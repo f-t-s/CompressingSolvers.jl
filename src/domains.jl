@@ -20,7 +20,6 @@ struct Domain{PT}
     id::Int
 end
 
-
 function weight(t::Domain)
     return t.weight
 end
@@ -187,7 +186,7 @@ function cluster(domains::AbstractVector{<:Domain}, scale, tree_function)
 end
 
 # Function that thakes in a list of points and returns a hierarchical domain decomposition
-# centeres contains the point location of the degrees of freedom
+# centers contains the point location of the degrees of freedom
 # h is the ratio between subsequenct scales,
 # centers contains the centers of the degrees of freedom
 function create_hierarchy(input_domains::AbstractVector{<:Domain}, h, diams, tree_function; h_min = minimum(diams), h_max = max(approximate_diameter(center.(input_domains) / 2), maximum(diams)))

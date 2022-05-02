@@ -76,8 +76,6 @@ function FD_Laplacian_subdivision_2d(q, ρ = 2.0, α = x -> 1)
     N = n ^ 2  
     Δx = Δy = 1 / (n + 1)
 
-
-
     # actual multiscale domains are provided by subdivision_2d. fine_domains only 
     # there fore the 
 
