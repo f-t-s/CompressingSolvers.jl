@@ -13,7 +13,7 @@ function subdivision_2d(q)
     N = n ^ 2  
     Δx = Δy = 1 / (n + 1)
     # The evaluation points of the finite difference discretization.
-    domains = array2domains(mapreduce(identity, hcat, [[x; y] for x in Δx .* (1/2 : (n - 1/2)) for y in Δy .* (1/2 : (n - 1/2))]))
+    domains = array2domains(reduce(hcat, [[x; y] for x in Δx .* (1/2 : (n - 1/2)) for y in Δy .* (1/2 : (n - 1/2))]))
 
     ##################################################################
     # Construct the domain decomposition

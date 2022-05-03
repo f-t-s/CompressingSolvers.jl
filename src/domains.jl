@@ -2,6 +2,7 @@ import NearestNeighbors: KDTree, inrange, nn
 import StaticArrays.SVector
 import LinearAlgebra.norm
 import Plots: scatter!, plot
+import DataStructures: MutableBinaryMaxHeap, top_with_handle, pop!, update!
 
 # This file contains the definitions for nested partitions 
 
@@ -30,6 +31,10 @@ end
 
 function center(t::Domain)
     return t.center
+end
+
+function scale(t::Domain)
+    return t.scale
 end
 
 function id(t::Domain)
@@ -140,26 +145,46 @@ function construct_member_lists(memberships_abstract)
     end
 end
 
+# returns the aggregation centers to use for clustering at scale, `scale`
+function compute_aggregation_centers(centers, scale, tree_function)
+    RT = eltype(eltype(centers))
+    # Vector that contains the indices that will become aggregation centers
+    output_indices = Int[]
+
+    assigned = falses(length(centers))
+    # While not all nodes are assigned to a color
+    tree = tree_function(centers)
+    heap = MutableBinaryMaxHeap(fill(typemax(RT), length(centers)))
+    # reset heap values
+    # do furthest point sampling, finish if either the heap is empty, or there are no
+    # sufficiently distant points left 
+    while !isempty(heap) && first(heap) > scale
+        # get the id of the new pivot
+        ~, top_id = top_with_handle(heap)
+        # push the new id to the output array
+        push!(output_indices, top_id)
+        # remove the new pivot from the heap
+        pop!(heap); assigned[top_id] = true; 
+        # add the new pivot to the 
+        # obtain the affected nodes and their distance to the pivot 
+        number_affected_nodes = length(inrange(tree, centers[top_id], scale))
+        affected_nodes, distances = knn(tree, centers[top_id], number_affected_nodes)
+        # Update the distances of nodes that could be affedcted. 
+        for (node, dist) in zip(affected_nodes, distances)
+            # update distance if node is still in heap
+            !assigned[node] && update!(heap, node, dist)
+        end
+    end
+    return centers[output_indices], output_indices
+end
+
 # A function to cluster a list of points around centers chosen from among them, that are at least scale apart.
 # When creating basis functions, scale should be taken as the diameter of the support size of the input basis functions.
 # returns an array containing the indices of the centers, as well as an array of arrays which contain the clustering indices
 # list keeps track of which points are still possible choices for the aggregation procedure.
 function cluster(centers::AbstractVector{<:SVector}, scale, tree_function, list=falses(length(centers)))
     # aggregation centers
-    aggregation_centers = Vector{eltype(centers)}(undef, 0)
-    # Id's of the centers selected as aggregation points
-    aggregation_indices = Vector{Int}(undef, 0)
-    # compute nearby neighbors
-    neighborhoods = inrange(tree_function(centers), centers, scale)
-    for i = 1 : length(centers)
-        # If the element has not been added to the list
-        if !list[i]
-            push!(aggregation_centers, centers[i])
-            push!(aggregation_indices, i)
-            # crossing off all nodes that werewithin the neighborhood.
-            list[neighborhoods[i]] .= true
-        end
-    end
+    aggregation_centers, aggregation_indices = compute_aggregation_centers(centers, scale, tree_function)
     # contains the membership of each element expressed as an integer between 1 and number_of_clusters
     memberships_abstract = nn(tree_function(aggregation_centers), centers)[1]
 
@@ -185,11 +210,18 @@ function cluster(domains::AbstractVector{<:Domain}, scale, tree_function)
     return aggregated_domains
 end
 
-# Function that thakes in a list of points and returns a hierarchical domain decomposition
+# function that finds the smallest distance of each center to any of the other centers
+function approximate_scale(centers, tree_function)
+    tree = tree_function(centers)
+    ~, distances = knn(tree, centers, 2, true) 
+    return getindex.(distances, 2)
+end
+
+# Function that takes in a list of points and returns a hierarchical domain decomposition
 # centers contains the point location of the degrees of freedom
 # h is the ratio between subsequenct scales,
 # centers contains the centers of the degrees of freedom
-function create_hierarchy(input_domains::AbstractVector{<:Domain}, h, diams, tree_function; h_min = minimum(diams), h_max = max(approximate_diameter(center.(input_domains) / 2), maximum(diams)))
+function create_hierarchy(input_domains::AbstractVector{<:Domain}, h, tree_function, diams = approximate_scale(center.(input_domains), tree_function), h_min = minimum(diams), h_max = max(approximate_diameter(center.(input_domains) / 2), maximum(diams)))
     # the input basis functions should be ordered from coarse to fine, meaning that dims should be sorted in decreasing order.
     @assert issorted(diams, rev=true)
     # Compute the number of levels needed in total
@@ -257,22 +289,3 @@ function plot_domains(domains::AbstractVector{<:Domain};
     end
     return outplot
 end
-
-# # unclear what this is doing :D
-# function find_ranges(a::AbstractVector{<:Integer})
-#     @assert issorted(a); @assert a[1] == one(eltype(a))
-#     n = a[end]
-#     indices = Vector{eltype(a)}(undef, n + 1)
-#     track_el = zero(eltype(a))
-#     for (k, el) in enumerate(a)
-#         if el > track_el
-#             @assert el == track_el + 1
-#             # Note first index of size el
-#             indices[el] = k
-#             track_el = el
-#         end
-#     end
-#     indices[end] = length(a) + 1
-#     return map((x,y) -> x : (y - 1), indices[1 : (end - 1)], indices[2:end])
-# end
-# 
