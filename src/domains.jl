@@ -222,8 +222,6 @@ end
 # h is the ratio between subsequenct scales,
 # centers contains the centers of the degrees of freedom
 function create_hierarchy(input_domains::AbstractVector{<:Domain}, h, tree_function, diams = approximate_scale(center.(input_domains), tree_function), h_min = minimum(diams), h_max = max(approximate_diameter(center.(input_domains) / 2), maximum(diams)))
-    # the input basis functions should be ordered from coarse to fine, meaning that dims should be sorted in decreasing order.
-    @assert issorted(diams, rev=true)
     # Compute the number of levels needed in total
     q = ceil(Int, log(h, h_min / h_max)) + 1
     # vector containing the scales of the different levels
