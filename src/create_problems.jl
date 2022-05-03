@@ -71,7 +71,7 @@ end
 # q: total number of subdivisions, leading to a number dofs given by 2^{qd}
 # α: the coefficient function. an edge between x and y will have conductivity (α(x) + α(y)) / 2
 # Possibly remore the implicit choice of ρ
-function FD_Laplacian_subdivision_2d(q, ρ = 2.0, α = x -> 1)
+function FD_Laplacian_subdivision_2d(q, ρ = 2.0)
     n = 2 ^ q
     N = n ^ 2  
     Δx = Δy = 1 / (n + 1)
@@ -83,10 +83,50 @@ function FD_Laplacian_subdivision_2d(q, ρ = 2.0, α = x -> 1)
     # Construct the Laplace operator
     ##################################################################
     # Create the sparsity pattern of the Laplace operator 
-    A = spdiagm(-n => -ones(N-n), -1 => -ones(N-1) .* (mod.(1 : (N - 1), n) .!= 0), 0 => 4 * ones(N), 1 => -ones(N-1) .* (mod.(1 : (N - 1), n) .!= 0), n => -ones(N-n)) # / Δx^2
+    lin_inds = LinearIndices((n, n))
+    row_inds = Int[]
+    col_inds = Int[]
+    S = Float64[]
+    for i in 1 : n, j in 1 : n
+        # adding self-interaction 2
+        push!(col_inds, lin_inds[mod(i - 1, n) + 1, mod(j - 1, n) + 1]) 
+        push!(row_inds, lin_inds[mod(i - 1, n) + 1, mod(j - 1, n) + 1]) 
+        push!(S, 4.0) 
+        if i < n
+            # interaction to next element in i direction
+            push!(col_inds, lin_inds[mod(i - 1, n) + 1, mod(j - 1, n) + 1]) 
+            push!(row_inds, lin_inds[mod(i - 1 + 1, n) + 1, mod(j - 1, n) + 1]) 
+            push!(S, -1.0)
+        end
 
-    # Important to multiply A.nzval and not A, to prevent dropping of structural nonzeros.
-    A.nzval .*= 0
+        if i > 1
+            # interaction to previous element in i direction
+            push!(col_inds, lin_inds[mod(i - 1, n) + 1, mod(j - 1, n) + 1])
+            push!(row_inds, lin_inds[mod(i - 1 - 1, n) + 1, mod(j - 1, n) + 1]) 
+            push!(S, -1.0)
+        end
+
+        if j < n
+            # interaction to next element in j direction
+            push!(col_inds, lin_inds[mod(i - 1, n) + 1, mod(j - 1, n) + 1]) 
+            push!(row_inds, lin_inds[mod(i - 1, n) + 1, mod(j - 1 + 1, n) + 1]) 
+            push!(S, -1.0)
+        end
+
+        if j > 1
+            # interaction to previous element in j direction
+            push!(col_inds, lin_inds[mod(i - 1, n) + 1, mod(j - 1, n) + 1]) 
+            push!(row_inds, lin_inds[mod(i - 1, n) + 1, mod(j - 1 - 1, n) + 1]) 
+            push!(S, -1.0)
+        end
+    end
+    A = sparse(row_inds, col_inds, S) / (Δx^2) / 2
+
+    # constructing the tree function
+    function tree_function(x)
+        return KDTree(x)
+    end
+    
    ##################################################################
     # Construct the domain decomposition
     ##################################################################
@@ -94,26 +134,6 @@ function FD_Laplacian_subdivision_2d(q, ρ = 2.0, α = x -> 1)
 
     # collect the finest Domains and sorts them to be in accordance with the construction of the matrix dofs
     fine_domains = sort(gather_descendants(domains), by=id)
-
-    for (i, j, val) in zip(findnz(A)...)
-        # only look at edges
-        if i != j
-            val = (α(center(fine_domains[i])) + α(center(fine_domains[j]))) / 2 / Δx^2
-            A[i, i] += val   
-            A[j, j] += val
-            A[i, j] -= val
-            A[j, i] -= val
-        end
-    end
-    # # adding zero order term for now
-    # for i = 1 : size(A, 1)
-    #     A[i, i] += 1.0
-    # end
-
-    # constructing the tree function
-    function tree_function(x)
-        return KDTree(x)
-    end
 
 
     ##################################################################

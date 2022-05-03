@@ -1,6 +1,6 @@
 @testset "construct matrix" begin
     q = 5
-    A, coarse_domains, scales, basis_functions, multicolor_ordering, fine_domains, tree_function = CompressingSolvers.FD_Laplacian_subdivision_2d(q, 3.0)
+    A, coarse_domains, scales, basis_functions, multicolor_ordering, fine_domains, tree_function = CompressingSolvers.FD_Laplacian_subdivision_2d(q, 4.0)
 
     I, J = CompressingSolvers.sparsity_set(multicolor_ordering, CompressingSolvers.center.(fine_domains), tree_function)
     @test allunique(zip(I, J))
