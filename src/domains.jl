@@ -41,6 +41,10 @@ function id(t::Domain)
     return t.id 
 end
 
+function point_type(dm::Domain{PT}) where PT
+    return PT 
+end
+
 # Returns a list of all the subdomains of a given domain, recursively
 function subdomains(t::Domain{PT}) where {PT<:AbstractVector}
     if iselementary(t::Domain)
@@ -96,7 +100,6 @@ function array2domains(in::AbstractMatrix{<:Real}, weights=1; dims=1)
     return out
 end
 
-
 # We define a domain as elementary if it does not have any children. Note that this is slightly different than demanding it to consist of a single coordinate domain
 function iselementary(t::Domain)
     return isempty(t.children)
@@ -119,7 +122,6 @@ function gather_descendants(domains::AbstractVector{<:Domain})
     end
     return out
 end
-
 
 # Helper functions for clustering
 # The Vector memberships contains elements of ids
@@ -212,9 +214,13 @@ end
 
 # function that finds the smallest distance of each center to any of the other centers
 function approximate_scale(centers, tree_function)
-    tree = tree_function(centers)
-    ~, distances = knn(tree, centers, 2, true) 
-    return getindex.(distances, 2)
+    if length(centers) < 2
+        return Inf
+    else
+        tree = tree_function(centers)
+        ~, distances = knn(tree, centers, 2, true) 
+        return getindex.(distances, 2)
+    end
 end
 
 # Function that takes in a list of points and returns a hierarchical domain decomposition

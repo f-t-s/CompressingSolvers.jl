@@ -9,4 +9,8 @@ include("utils.jl")
 
 # Write your package code here.
 
+# exporting functions 
+export uniform2d_fd_poisson
+export reconstruct
+
 end

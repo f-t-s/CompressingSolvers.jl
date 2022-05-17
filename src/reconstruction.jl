@@ -1,5 +1,39 @@
 using SparseArrays: getcolptr, getrowval, getnzval, sparse
 using LinearAlgebra: dot, Factorization, mul!
+using Distances: Euclidean 
+import Base.* 
+
+# a simple struct that wraps the reconstruction 
+struct Reconstruction
+    L::SparseMatrixCSC
+end
+
+function *(rc::Reconstruction, v)
+    return rc.L * (rc.L' * v)
+end
+
+# A function that takes in a reconstruction problem and returns the Reconstruction
+function reconstruct(pb::ReconstructionProblem, ρ, h=0.5)
+    if typeof(pb.distance) == Euclidean
+        tree_function(x) = KDTree(x, pb.distance)
+    else
+        tree_function(x) = BallTree(x, pb.distance)
+    end
+    # create a domain hierarchy 
+    domain_hierarchy = gather_hierarchy(create_hierarchy(pb.domains, h, tree_function))
+    # compute approximations of the scales on each level
+    scales = [maximum(approximate_scale(center.(domain_hierarchy[k]), tree_function)) for k = 1 : length(domain_hierarchy)]
+    # compute Haar-like bais functions from domain hierarchy 
+    basis_functions = compute_basis_functions(first(domain_hierarchy)) 
+    # computing the multicolor ordering
+    multicolor_ordering = construct_multicolor_ordering(basis_functions, scales, tree_function)
+    # Forms the measurement matrix
+    𝐌 = form_measurement_matrix(multicolor_ordering)
+    # Performs the measurement
+    𝐎 = pb.ω(𝐌)
+    return Reconstruction(reconstruct(multicolor_ordering, center.(pb.domains), 𝐌, 𝐎, tree_function))
+end 
+
 # function that takes in a multicolor colors and returns the corresponding sparsity sets
 # each entry of the variable "colors" contains a different color,represented as iterable 
 # collection of basis functions 
@@ -93,7 +127,6 @@ function reconstruct(ordering, row_centers, measurement_matrix, measurement_resu
         # update the offset that allows to assign column indices to entries of a given color
         offset += length(ordering[k])
     end
-
 
     return SparseMatrixCSC(size(L, 1), offset, active_colptr, active_rowval, active_nzval)
 end
