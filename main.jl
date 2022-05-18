@@ -6,9 +6,9 @@ using SparseArrays
 using LinearAlgebra
 
 # Setting up the test domains
-ρ = Inf
+ρ = 6
 # ρ = Inf
-q = 2
+q = 9
 
 pb = uniform2d_fd_poisson(q)
 
@@ -17,12 +17,6 @@ rk = reconstruct(pb, ρ)
 
 
 CompressingSolvers.compute_relative_error(rk, pb)
-
-
-
-
-
-
 
 # # A, coarse_domains, scales, basis_functions, multicolor_ordering, fine_domains, tree_function = CompressingSolvers.FD_Laplacian_subdivision_2d(q, ρ)
 # α(x) = rand()

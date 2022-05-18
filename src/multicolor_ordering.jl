@@ -5,6 +5,8 @@ import LinearAlgebra.Vector
 import DataStructures: MutableBinaryMaxHeap, top_with_handle, pop!, update!
 
 function construct_multicolor_ordering(input_array::AbstractVector, ρh::Real, tree_function)
+    # presently, infinite entries in ρh lead to bugs
+    @assert all(isfinite.(ρh))
     RT = real_type(eltype(input_array))
     # Vector (colors) of Vectors of supernodes  
     out = Vector{eltype(input_array)}[]

@@ -15,23 +15,33 @@ end
 # A function that takes in a reconstruction problem and returns the Reconstruction
 function reconstruct(pb::ReconstructionProblem, ρ, h=0.5)
     if typeof(pb.distance) == Euclidean
-        tree_function(x) = KDTree(x, pb.distance)
+        TreeType = KDTree
     else
-        tree_function(x) = BallTree(x, pb.distance)
+        TreeType = BallTree
     end
+    tree_function(x) = TreeType(x, pb.distance)
     # create a domain hierarchy 
-    domain_hierarchy = gather_hierarchy(create_hierarchy(pb.domains, h, tree_function))
+    println("Computing domain hierarchy.")
+    @time domain_hierarchy = gather_hierarchy(create_hierarchy(pb.domains, h, tree_function))
     # compute approximations of the scales on each level
     scales = [maximum(approximate_scale(center.(domain_hierarchy[k]), tree_function)) for k = 1 : length(domain_hierarchy)]
     # compute Haar-like bais functions from domain hierarchy 
-    basis_functions = compute_basis_functions(first(domain_hierarchy)) 
+    println("Computing basis functions.")
+    @time basis_functions = compute_basis_functions(first(domain_hierarchy)) 
     # computing the multicolor ordering
-    multicolor_ordering = construct_multicolor_ordering(basis_functions, scales, tree_function)
+    println("Computing multicolor ordering.")
+    @time multicolor_ordering = construct_multicolor_ordering(basis_functions, ρ * scales, tree_function)
+    # Computing measurements
     # Forms the measurement matrix
-    𝐌 = form_measurement_matrix(multicolor_ordering)
-    # Performs the measurement
-    𝐎 = pb.ω(𝐌)
-    return Reconstruction(reconstruct(multicolor_ordering, center.(pb.domains), 𝐌, 𝐎, tree_function))
+    println("Measurements")
+    @time begin
+        𝐌 = form_measurement_matrix(multicolor_ordering)
+        # Performs the measurement
+        𝐎 = pb.ω(𝐌)
+    end
+    println("Reconstruction.")
+    @time rk = Reconstruction(reconstruct(multicolor_ordering, center.(pb.domains), 𝐌, 𝐎, tree_function))
+    return rk
 end 
 
 # function that takes in a multicolor colors and returns the corresponding sparsity sets
@@ -95,14 +105,14 @@ end
 # ordering is a multicolor ordering of basis functions
 function reconstruct(ordering, row_centers, measurement_matrix, measurement_results, tree_function)
     @assert length(ordering) == size(measurement_results, 2)
-    I, J = sparsity_set(ordering, row_centers, tree_function)
+    @time I, J = sparsity_set(ordering, row_centers, tree_function)
     L = sparse(I, J, zeros(eltype(measurement_results), length(I)))
     # L_empty = L[:, 1:0]
     active_nzval, active_colptr, active_rowval = [f(L[:, 1 : 0]) for f in [getnzval, getcolptr, getrowval]]
     # going through the columns of the measurements  
     temp = zeros(size(L, 2))
     offset = 0 
-    for k = 1 : size(measurement_results, 2)
+    @time for k = 1 : size(measurement_results, 2)
         # Subtract the existing factor from measurement
         # TODO: avoid temporary allocations
         active_L = SparseMatrixCSC(size(L, 1), offset, active_colptr, active_rowval, active_nzval)
