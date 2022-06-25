@@ -140,7 +140,8 @@ function reconstruct(ordering, row_centers, measurement_matrix, measurement_resu
         # normalize the column
 
         for (k_column, basis_function) in zip(color_range, ordering[k])
-            @views active_L[:, k_column] ./= sqrt(dot(coefficients(basis_function), active_L[:, k_column]))
+            normalization_value = sqrt(dot(coefficients(basis_function), view(active_L, :, k_column)))
+            active_L.nzval[active_L.colptr[k_column] : (active_L.colptr[k_column + 1 ] - 1)] ./= normalization_value
         end
 
         # update the offset that allows to assign column indices to entries of a given color
