@@ -117,8 +117,17 @@ function reconstruct(ordering, row_centers, measurement_matrix, measurement_resu
         # TODO: avoid temporary allocations
         active_L = SparseMatrixCSC(size(L, 1), offset, active_colptr, active_rowval, active_nzval)
 
-        @views mul!(temp[1 : offset], active_L', measurement_matrix[:, k])
-        @views mul!(measurement_results[:, k], active_L, temp[1 : offset], -1, 1)
+        # active_measurement = view(measurement_matrix, :, k)
+        # active_measurement_results = view(measurement_results, :, k)
+        # buffer = view(temp, 1:offset)
+
+        active_measurement = measurement_matrix[:, k]
+        active_measurement_results = measurement_results[:, k]
+        buffer = temp[1 : offset]
+
+
+        mul!(buffer, active_L', active_measurement)
+        mul!(active_measurement_results, active_L, buffer, -1, 1)
         # mul!(view(temp, 1 : (k - 1)), view(L, :, 1 : k - 1))
         # mul!(temp_col, view(L, :, 1 : k - 1)') 
 
@@ -126,7 +135,7 @@ function reconstruct(ordering, row_centers, measurement_matrix, measurement_resu
         color_range = ((1 + offset) : (length(ordering[k]) + offset))
         active_L = update_active_L(active_nzval, active_colptr, active_rowval, L, color_range)
         # assign the values of the treated measurements to the corresponding columns of L
-        scatter_color!(active_L, view(measurement_results, :, k), color_range)
+        scatter_color!(active_L, active_measurement_results, color_range)
 
         # normalize the column
 
