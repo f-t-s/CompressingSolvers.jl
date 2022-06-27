@@ -1,8 +1,8 @@
 using NearestNeighbors: inrange, nn
 using StaticArrays: SVector
-using LinearAlgebra: norm
 using Plots: scatter!, plot
 using DataStructures: MutableBinaryMaxHeap, top_with_handle, pop!, update!
+using Distances: Euclidean, PeriodicEuclidean
 
 # This file contains the definitions for nested partitions 
 
@@ -105,11 +105,10 @@ function iselementary(t::Domain)
     return isempty(t.children)
 end
 
-function approximate_diameter(centers::AbstractVector{<:AbstractVector}, tree_function) 
+function approximate_diameter(centers::AbstractVector{<:AbstractVector}, distance::Euclidean) 
     # A slightly clumsy workaround to extract the distance function from the tree
     mn = sum(centers) / length(centers)
-    tree = tree_function([mn])
-    return maximum(nn(tree, centers)[2])
+    return maximum(norm.(repeat([mn], length(centers)) - centers))
 end
 
 # Takes in a vector of domains and returns a list of all the elementary domains that are among its descendants
@@ -229,7 +228,10 @@ end
 # centers contains the point location of the degrees of freedom
 # h is the ratio between subsequenct scales,
 # centers contains the centers of the degrees of freedom
-function create_hierarchy(input_domains::AbstractVector{<:Domain}, h, tree_function, diams = approximate_scale(center.(input_domains), tree_function), h_min = minimum(diams), h_max = max(approximate_diameter(center.(input_domains), tree_function) / 2, maximum(diams)))
+function create_hierarchy(input_domains::AbstractVector{<:Domain}, h, TreeType, diams = approximate_scale(center.(input_domains), x -> TreeType(x, Euclidean())), h_min = minimum(diams), h_max = max(approximate_diameter(center.(input_domains), Euclidean()) / 2, maximum(diams)))
+    # presently does not supporting non-euclidean distances, since we are using linear structure to compute centers
+    distance = Euclidean()
+    tree_function(x) = TreeType(x, distance)
     # Compute the number of levels needed in total
     q = ceil(Int, log(h, h_min / h_max)) + 1
     # vector containing the scales of the different levels
@@ -291,6 +293,37 @@ function plot_domains(domains::AbstractVector{<:Domain};
         centers = center.(gather_descendants([domain]))
         x = [centers[k][1] for k in 1 : length(centers)]
         y = [centers[k][2] for k in 1 : length(centers)]
+        scatter!(outplot, x, y)
+    end
+    return outplot
+end
+
+function plot_domains_periodic(domains::AbstractVector{<:Domain};
+                               xlims=(-1.0, 2.0),
+                               ylims=(-1.0, 2.0),
+                              ) 
+    @assert length(center(domains[1])) == 2 
+    outplot = plot(; xlims, ylims, aspect_ratio=:equal) 
+    for domain in domains
+        centers = center.(gather_descendants([domain]))
+        x = vcat([centers[k][1] + 0 for k in 1 : length(centers)],
+                 [centers[k][1] + 0 for k in 1 : length(centers)],
+                 [centers[k][1] + 0 for k in 1 : length(centers)],
+                 [centers[k][1] + 1 for k in 1 : length(centers)],
+                 [centers[k][1] + 1 for k in 1 : length(centers)],
+                 [centers[k][1] + 1 for k in 1 : length(centers)],
+                 [centers[k][1] - 1 for k in 1 : length(centers)],
+                 [centers[k][1] - 1 for k in 1 : length(centers)],
+                 [centers[k][1] - 1 for k in 1 : length(centers)])
+        y = vcat([centers[k][2] + 0 for k in 1 : length(centers)],
+                 [centers[k][2] + 1 for k in 1 : length(centers)],
+                 [centers[k][2] - 1 for k in 1 : length(centers)],
+                 [centers[k][2] + 0 for k in 1 : length(centers)],
+                 [centers[k][2] + 1 for k in 1 : length(centers)],
+                 [centers[k][2] - 1 for k in 1 : length(centers)],
+                 [centers[k][2] + 0 for k in 1 : length(centers)],
+                 [centers[k][2] + 1 for k in 1 : length(centers)],
+                 [centers[k][2] - 1 for k in 1 : length(centers)])
         scatter!(outplot, x, y)
     end
     return outplot

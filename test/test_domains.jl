@@ -1,4 +1,5 @@
-using NearestNeighbors: KDTree
+using NearestNeighbors: KDTree, BallTree
+using Distances: PeriodicEuclidean, Euclidean
 @testset "in 2d" begin
     h = 0.3
     Δx = 0.03
@@ -25,6 +26,36 @@ using NearestNeighbors: KDTree
     end
     CompressingSolvers.plot_domains(all_domains[1]; xlims=(0.0, 2.0), ylims=(0.0,2.0))
 end
+
+@testset "in 2d, periodic" begin
+    h = 0.3
+    Δx = 0.03
+    Δy = 0.05
+    x = mapreduce(identity, hcat, [[x; y] for x in Δx : Δx : 1 for y in Δy : Δy : 2])
+    diams = 2 * norm([Δx, Δy]) * ones(size(x, 2))
+    domain_vector = CompressingSolvers.array2domains(x)
+    @test all(CompressingSolvers.iselementary.(domain_vector))
+    # Construct a new "parent domain" that contains all children domains
+    parent_domain = CompressingSolvers.Domain(domain_vector, length(domain_vector) + 1)
+    # creating the hierarchy from the parent domain
+    distance = PeriodicEuclidean((1.0, 2.0))
+    tree_function(x) = BallTree(x, distance)
+    hierarchy = CompressingSolvers.create_hierarchy((CompressingSolvers.children(parent_domain)), h, KDTree)
+    # returns an array of arrays of domains
+    all_domains = CompressingSolvers.gather_hierarchy(hierarchy)
+    for k = 1 : length(all_domains)
+        sorted_truth = sort(domain_vector, by=CompressingSolvers.id)
+        sorted_recovered = sort(CompressingSolvers.gather_descendants(all_domains[k]), by=CompressingSolvers.id)
+
+        # make sure the weights stay the same
+        @test sum(CompressingSolvers.weight.(all_domains[k])) == sum(CompressingSolvers.weight.(domain_vector))
+
+        # Test if the partition, on each level, produces the same set of elements
+        @test sort(domain_vector, by=CompressingSolvers.id) == sort(CompressingSolvers.gather_descendants(all_domains[k]), by=CompressingSolvers.id)
+    end
+    CompressingSolvers.plot_domains(all_domains[1]; xlims=(0.0, 2.0), ylims=(0.0,2.0))
+end
+
 
 @testset "in 2d, inhomogeneous" begin
     h = 0.3

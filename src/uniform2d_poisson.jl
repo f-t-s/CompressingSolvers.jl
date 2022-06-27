@@ -11,8 +11,7 @@ function uniform2d_dirichlet_fd_poisson(q, α = (x, y) -> 1.0, β = (x, y) -> 0.
     x = Δx : Δx : (1 - Δx)
     y = Δy : Δy : (1 - Δy)
     @assert length(x) == n
-    @assert length(y) == n
-    # We begin by creating a lower triangular matrix L such that A = L + L'
+    @assert length(y) == n    # We begin by creating a lower triangular matrix L such that A = L + L'
     lin_inds = LinearIndices((n, n))
     row_inds = Int[]
     col_inds = Int[]
@@ -66,10 +65,13 @@ end
 # β is the zeroth order term of the system 
 # β(x) returns the zero order term in the location x.
 function uniform2d_periodic_fd_poisson(q, α = (x, y) -> 1.0, β = (x, y) -> 1.0)
+    # Accounting for periodicity 
+    periodic_α(x, y) = α(div(x, 1), div(y, 1))
+    periodic_β(x, y) = β(div(x, 1), div(y, 1))
     n = 2 ^ q 
     N = n^2 
     Δx = Δy = 1 / n
-    x = 0 : Δx : (1 - Δx)
+    x = 0 : Δx : (1 - Δx) 
     y = 0 : Δy : (1 - Δy)
     @assert length(x) == n
     @assert length(y) == n
@@ -87,9 +89,9 @@ function uniform2d_periodic_fd_poisson(q, α = (x, y) -> 1.0, β = (x, y) -> 1.0
                    lin_inds[i, j], 
                    Δx * Δy) 
         # adding self-interaction 2
-        α_x = α(x[i] + Δx, y[j])
-        α_y = α(x[i], y[j] + Δy)
-        β_value = β(x[i], y[j])
+        α_x = periodic_α(x[i] + Δx, y[j])
+        α_y = periodic_α(x[i], y[j] + Δy)
+        β_value = periodic_β(x[i], y[j])
 
         # Self interaction 
         push!(col_inds, lin_inds[i, j])

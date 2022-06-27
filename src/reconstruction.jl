@@ -12,17 +12,20 @@ function *(rc::Reconstruction, v)
     return rc.L * (rc.L' * v)
 end
 
-# A function that takes in a reconstruction problem and returns the Reconstruction
-function reconstruct(pb::ReconstructionProblem, ρ, h=0.5)
-    if typeof(pb.distance) == Euclidean
-        TreeType = KDTree
+function default_tree_type(distance)
+    if typeof(distance) == Euclidean
+        return KDTree
     else
-        TreeType = BallTree
+        return BallTree
     end
+end
+
+# A function that takes in a reconstruction problem and returns the Reconstruction
+function reconstruct(pb::ReconstructionProblem, ρ, h=0.5, TreeType=default_tree_type(pb.distance))
     tree_function(x) = TreeType(x, pb.distance)
     # create a domain hierarchy 
     println("Computing domain hierarchy.")
-    @time domain_hierarchy = gather_hierarchy(create_hierarchy(pb.domains, h, tree_function))
+    @time domain_hierarchy = gather_hierarchy(create_hierarchy(pb.domains, h, TreeType))
     # compute approximations of the scales on each level
     scales = [maximum(approximate_scale(center.(domain_hierarchy[k]), tree_function)) for k = 1 : length(domain_hierarchy)]
     # compute Haar-like bais functions from domain hierarchy 
@@ -138,7 +141,6 @@ function reconstruct(ordering, row_centers, measurement_matrix, measurement_resu
         scatter_color!(active_L, active_measurement_results, color_range)
 
         # normalize the column
-
         for (k_column, basis_function) in zip(color_range, ordering[k])
             normalization_value = sqrt(dot(coefficients(basis_function), view(active_L, :, k_column)))
             active_L.nzval[active_L.colptr[k_column] : (active_L.colptr[k_column + 1 ] - 1)] ./= normalization_value

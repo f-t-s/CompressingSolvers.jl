@@ -75,6 +75,8 @@ end
 # β is the zeroth order term of the system 
 # β(x) returns the zero order term in the location x.
 function uniform3d_periodic_fd_poisson(q, α = (x, y, z) -> 1.0, β = (x, y, z) -> 1.0)
+    periodic_α(x, y, z) = α(div(x, 1), div(y, 1), div(z, 1))
+    periodic_β(x, y, z) = β(div(x, 1), div(y, 1), div(z, 1))
     n = 2 ^ q 
     N = n^3 
     Δx = Δy = Δz = 1 / n
@@ -98,10 +100,10 @@ function uniform3d_periodic_fd_poisson(q, α = (x, y, z) -> 1.0, β = (x, y, z) 
                    lin_inds[i, j, k], 
                    Δx * Δy * Δz) 
         # adding self-interaction 2
-        α_x = α(x[i] + Δx, y[j], z[k])
-        α_y = α(x[i], y[j] + Δy, z[k])
-        α_z = α(x[i], y[j], z[k] + Δz)
-        β_value = β(x[i], y[j], z[k])
+        α_x = periodic_α(x[i] + Δx, y[j], z[k])
+        α_y = periodic_α(x[i], y[j] + Δy, z[k])
+        α_z = periodic_α(x[i], y[j], z[k] + Δz)
+        β_value = periodic_β(x[i], y[j], z[k])
 
         # Self interaction 
         push!(col_inds, lin_inds[i, j, k])

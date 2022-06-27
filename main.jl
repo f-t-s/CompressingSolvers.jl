@@ -5,44 +5,39 @@ using CompressingSolvers
 using SparseArrays
 using LinearAlgebra
 
-# Setting up the test domains
-ρ = 6
-# ρ = Inf
-q = 9
-
-pb = uniform2d_fd_poisson(q)
-
-
-rk = reconstruct(pb, ρ) 
-
-
-CompressingSolvers.compute_relative_error(rk, pb)
-
-# # A, coarse_domains, scales, basis_functions, multicolor_ordering, fine_domains, tree_function = CompressingSolvers.FD_Laplacian_subdivision_2d(q, ρ)
-# α(x) = rand()
-# A, coarse_domains, scales, basis_functions, multicolor_ordering, fine_domains, tree_function = CompressingSolvers.FD_periodic_Laplacian_subdivision_2d(q, ρ, α)
+# # Setting up the test domains
+# ρ = 3
+# # ρ = Inf
+# q = 4
 # 
-# measurement_matrix = CompressingSolvers.form_measurement_matrix(multicolor_ordering)
-# @show size(measurement_matrix)
-# @time measurement_results = CompressingSolvers.measure(cholesky(A), measurement_matrix)
 # 
-# @time L = CompressingSolvers.reconstruct(multicolor_ordering, CompressingSolvers.center.(fine_domains), measurement_matrix, measurement_results, tree_function)
+# # pb = uniform2d_dirichlet_fd_poisson(q)
+# # pb = uniform3d_dirichlet_fd_poisson(q)
 # 
-# # @show opnorm(inv(Matrix(A)) - L * L') / opnorm(inv(Matrix(A)))
-# @show CompressingSolvers.compute_relative_error(L, cholesky(A), 200, 200)
-# # 𝐅 = CompressingSolvers.SupernodalFactorization(multicolor_ordering, domain_supernodes);
-# # 
-# # 𝐌 = CompressingSolvers.create_measurement_matrix(multicolor_ordering, 𝐅.row_supernodes);
-# # 
-# # # 𝐎 = CompressingSolvers.measure(inv(Matrix(A)), 𝐌, 𝐅.row_supernodes); 
-# # @time 𝐎 = CompressingSolvers.measure(cholesky(A), 𝐌, 𝐅.row_supernodes); 
-# # 
-# # 𝐇 = hcat(SparseMatrixCSC.(vcat(𝐅.column_supernodes...))...);
-# # 
-# # @time CompressingSolvers.reconstruct!(𝐅, 𝐎, 𝐌, multicolor_ordering);
-# # L = SparseMatrixCSC(𝐅)
-# # 
-# # # @show norm(L * L' - inv(Matrix(A))) / norm(inv(Matrix(A)))
-# # @show length(multicolor_ordering)
-# # @show length(reduce(vcat, multicolor_ordering))
-# # @show CompressingSolvers.compute_relative_error(L, cholesky(A))
+# pb = uniform2d_periodic_fd_poisson(q)
+# # pb = uniform2d_dirichlet_fd_poisson(q)
+# 
+# rk = reconstruct(pb, ρ) 
+# 
+# CompressingSolvers.compute_relative_error(rk, pb)
+
+q = 5
+h = 0.5 
+ρ = 5.0
+pb = uniform2d_periodic_fd_poisson(q)
+
+# This is a part of the reconstruct(::ReconstructionProblem, ρ, h=0.5) wrapper function
+##########
+pb.domains .= pb.domains[randperm(length(pb.domains))]
+TreeType = BallTree
+tree_function(x) = TreeType(x, pb.distance)
+# tree_function(x) = TreeType(x, Euclidean())
+domain_hierarchy = CompressingSolvers.gather_hierarchy(CompressingSolvers.create_hierarchy(pb.domains, h, TreeType))
+aggregation_centers, aggregation_indices = CompressingSolvers.compute_aggregation_centers(CompressingSolvers.center.(pb.domains), 0.05, tree_function)
+clustered_domains = CompressingSolvers.cluster(pb.domains, 0.07125, tree_function) 
+scales = [maximum(CompressingSolvers.approximate_scale(CompressingSolvers.center.(domain_hierarchy[k]), tree_function)) for k = 1 : length(domain_hierarchy)]
+basis_functions = CompressingSolvers.compute_basis_functions(first(domain_hierarchy)) 
+multicolor_ordering = CompressingSolvers.construct_multicolor_ordering(basis_functions, ρ * scales, tree_function)
+##########
+
+I, J = CompressingSolvers.sparsity_set(multicolor_ordering, CompressingSolvers.center.(pb.domains), tree_function)

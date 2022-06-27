@@ -1,7 +1,7 @@
 import LinearAlgebra: norm, I
 @testset "Uniform Laplacian in 2d" begin
     q = 5
-    ρ = 4
+    ρ = 6
 
     pb = uniform2d_dirichlet_fd_poisson(q)
     rk = reconstruct(pb, ρ)
@@ -10,8 +10,6 @@ import LinearAlgebra: norm, I
     pb = uniform2d_periodic_fd_poisson(q)
     rk = reconstruct(pb, ρ)
     @test CompressingSolvers.compute_relative_error(rk, pb) ≤ 1e-3
-
-
 end
 
 @testset "Uniform Laplacian in 3d" begin
