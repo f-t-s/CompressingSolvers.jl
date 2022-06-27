@@ -1,8 +1,8 @@
-import NearestNeighbors: KDTree, inrange, nn
-import StaticArrays.SVector
-import LinearAlgebra.norm
-import Plots: scatter!, plot
-import DataStructures: MutableBinaryMaxHeap, top_with_handle, pop!, update!
+using NearestNeighbors: inrange, nn
+using StaticArrays: SVector
+using LinearAlgebra: norm
+using Plots: scatter!, plot
+using DataStructures: MutableBinaryMaxHeap, top_with_handle, pop!, update!
 
 # This file contains the definitions for nested partitions 
 
@@ -105,9 +105,11 @@ function iselementary(t::Domain)
     return isempty(t.children)
 end
 
-function approximate_diameter(centers::AbstractVector{<:AbstractVector}) 
+function approximate_diameter(centers::AbstractVector{<:AbstractVector}, tree_function) 
+    # A slightly clumsy workaround to extract the distance function from the tree
     mn = sum(centers) / length(centers)
-    return maximum(norm.(repeat([mn], length(centers)) - centers))
+    tree = tree_function([mn])
+    return maximum(nn(tree, centers)[2])
 end
 
 # Takes in a vector of domains and returns a list of all the elementary domains that are among its descendants
@@ -227,7 +229,7 @@ end
 # centers contains the point location of the degrees of freedom
 # h is the ratio between subsequenct scales,
 # centers contains the centers of the degrees of freedom
-function create_hierarchy(input_domains::AbstractVector{<:Domain}, h, tree_function, diams = approximate_scale(center.(input_domains), tree_function), h_min = minimum(diams), h_max = max(approximate_diameter(center.(input_domains) / 2), maximum(diams)))
+function create_hierarchy(input_domains::AbstractVector{<:Domain}, h, tree_function, diams = approximate_scale(center.(input_domains), tree_function), h_min = minimum(diams), h_max = max(approximate_diameter(center.(input_domains), tree_function) / 2, maximum(diams)))
     # Compute the number of levels needed in total
     q = ceil(Int, log(h, h_min / h_max)) + 1
     # vector containing the scales of the different levels
