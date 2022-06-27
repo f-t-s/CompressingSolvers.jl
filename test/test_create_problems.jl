@@ -1,7 +1,7 @@
 import LinearAlgebra: norm, I
 @testset "Uniform Laplacian in 2d" begin
     q = 5
-    ρ = 6
+    ρ = 7
 
     pb = uniform2d_dirichlet_fd_poisson(q)
     rk = reconstruct(pb, ρ)
