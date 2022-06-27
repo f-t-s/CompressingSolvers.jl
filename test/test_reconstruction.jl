@@ -1,15 +1,19 @@
 @testset "construct matrix" begin
     q = 5
-    A, coarse_domains, scales, basis_functions, multicolor_ordering, fine_domains, tree_function = CompressingSolvers.FD_Laplacian_subdivision_2d(q, 4.0)
+    h = 0.5 
+    ρ = 5.0
+    pb = uniform2d_dirichlet_fd_poisson(q)
 
-    I, J = CompressingSolvers.sparsity_set(multicolor_ordering, CompressingSolvers.center.(fine_domains), tree_function)
+    # This is a part of the reconstruct(::ReconstructionProblem, ρ, h=0.5) wrapper function
+    ##########
+    TreeType = KDTree
+    tree_function(x) = TreeType(x, pb.distance)
+    domain_hierarchy = CompressingSolvers.gather_hierarchy(CompressingSolvers.create_hierarchy(pb.domains, h, tree_function))
+    scales = [maximum(CompressingSolvers.approximate_scale(CompressingSolvers.center.(domain_hierarchy[k]), tree_function)) for k = 1 : length(domain_hierarchy)]
+    basis_functions = CompressingSolvers.compute_basis_functions(first(domain_hierarchy)) 
+    multicolor_ordering = CompressingSolvers.construct_multicolor_ordering(basis_functions, ρ * scales, tree_function)
+    ##########
+
+    I, J = CompressingSolvers.sparsity_set(multicolor_ordering, CompressingSolvers.center.(pb.domains), tree_function)
     @test allunique(zip(I, J))
-
-    measurement_matrix = CompressingSolvers.form_measurement_matrix(multicolor_ordering)
-    measurement_results = CompressingSolvers.measure(cholesky(A), measurement_matrix)
-
-
-    L = CompressingSolvers.reconstruct(multicolor_ordering, CompressingSolvers.center.(fine_domains), measurement_matrix, measurement_results, tree_function)
-
-    @show norm(inv(Matrix(A)) - L * L')
 end
