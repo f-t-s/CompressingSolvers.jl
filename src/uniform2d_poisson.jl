@@ -25,8 +25,8 @@ function uniform2d_dirichlet_fd_poisson(q, α = (x, y) -> 1.0, β = (x, y) -> 0.
                    lin_inds[i, j], 
                    Δx * Δy) 
         # adding self-interaction 2
-        α_x = α(x[i] + Δx, y[j])
-        α_y = α(x[i], y[j] + Δy)
+        α_x = α(x[i] + Δx, y[j]) / Δx^2
+        α_y = α(x[i], y[j] + Δy) / Δy^2
         β_value = β(x[i], y[j])
 
         # Self interaction 
@@ -89,8 +89,8 @@ function uniform2d_periodic_fd_poisson(q, α = (x, y) -> 1.0, β = (x, y) -> 1.0
                    lin_inds[i, j], 
                    Δx * Δy) 
         # adding self-interaction 2
-        α_x = periodic_α(x[i] + Δx, y[j])
-        α_y = periodic_α(x[i], y[j] + Δy)
+        α_x = periodic_α(x[i] + Δx, y[j]) / Δx^2
+        α_y = periodic_α(x[i], y[j] + Δy) / Δy^2
         β_value = periodic_β(x[i], y[j])
 
         # Self interaction 

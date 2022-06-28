@@ -28,9 +28,9 @@ function uniform3d_dirichlet_fd_poisson(q, α = (x, y, z) -> 1.0, β = (x, y, z)
                    lin_inds[i, j, k], 
                    Δx * Δy * Δz) 
         # adding self-interaction 2
-        α_x = α(x[i] + Δx, y[j], z[k])
-        α_y = α(x[i], y[j] + Δy, z[k])
-        α_z = α(x[i], y[j], z[k] + Δz)
+        α_x = α(x[i] + Δx, y[j], z[k]) / Δx^2
+        α_y = α(x[i], y[j] + Δy, z[k]) / Δy^2
+        α_z = α(x[i], y[j], z[k] + Δz) / Δz^2
         β_value = β(x[i], y[j], z[k])
 
         # Self interaction 
@@ -100,9 +100,9 @@ function uniform3d_periodic_fd_poisson(q, α = (x, y, z) -> 1.0, β = (x, y, z) 
                    lin_inds[i, j, k], 
                    Δx * Δy * Δz) 
         # adding self-interaction 2
-        α_x = periodic_α(x[i] + Δx, y[j], z[k])
-        α_y = periodic_α(x[i], y[j] + Δy, z[k])
-        α_z = periodic_α(x[i], y[j], z[k] + Δz)
+        α_x = periodic_α(x[i] + Δx, y[j], z[k]) / Δx^2
+        α_y = periodic_α(x[i], y[j] + Δy, z[k]) / Δy^2
+        α_z = periodic_α(x[i], y[j], z[k] + Δz) / Δz^2
         β_value = periodic_β(x[i], y[j], z[k])
 
         # Self interaction 
