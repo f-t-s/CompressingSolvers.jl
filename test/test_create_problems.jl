@@ -5,11 +5,11 @@ import LinearAlgebra: norm, I
 
     pb = uniform2d_dirichlet_fd_poisson(q)
     rk = reconstruct(pb, ρ)
-    @test CompressingSolvers.compute_relative_error(rk, pb) ≤ 1e-3
+    @test CompressingSolvers.compute_relative_error(rk, pb) ≤ 1e-4
 
     pb = uniform2d_periodic_fd_poisson(q)
     rk = reconstruct(pb, ρ)
-    @test CompressingSolvers.compute_relative_error(rk, pb) ≤ 1e-3
+    @test CompressingSolvers.compute_relative_error(rk, pb) ≤ 1e-4
 end
 
 @testset "Uniform Laplacian in 3d" begin
@@ -22,5 +22,5 @@ end
 
     pb = uniform3d_periodic_fd_poisson(q)
     rk = reconstruct(pb, ρ)
-    @test CompressingSolvers.compute_relative_error(rk, pb) ≤ 5e-3
+    @test CompressingSolvers.compute_relative_error(rk, pb) ≤ 1e-3
 end
