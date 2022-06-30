@@ -32,4 +32,5 @@ end
 include("uniform2d_poisson.jl")
 include("uniform3d_poisson.jl")
 include("uniform2d_fractional.jl")
+include("uniform3d_fractional.jl")
 

@@ -9,13 +9,9 @@ function uniform2d_fractional(q, s, β)
     Δx = Δy = 1 / n
     x = 0 : Δx : (1 - Δx) 
     y = 0 : Δy : (1 - Δy)
-
     @assert length(x) == n
     @assert length(y) == n    # We begin by creating a lower triangular matrix L such that A = L + L'
     lin_inds = LinearIndices((n, n))
-    row_inds = Int[]
-    col_inds = Int[]
-    S = Float64[]
     # contructing the vector that will store the domains
     domains = Vector{Domain{SVector{2, Float64}}}(undef, N)
     for i in 1 : n, j in 1 : n
@@ -23,13 +19,6 @@ function uniform2d_fractional(q, s, β)
                                          lin_inds[i, j], 
                                          Δx * Δy) 
     end
-
-    # creating a mask to apply in fourier space
-    # fourier_mask = zeros(n, n)
-    # for i = 1 : n, j = 1 : n
-    #     # We need the - 1 due to 1-based indexing.
-    #     fourier_mask[i, j] = ((2 * π * (i - 1))^2 + (2 * π * (j - 1))^2)^s + β
-    # end
 
     laplace_mask = zeros(n, n)
     laplace_mask[1, 1] = 2 / Δx^2 + 2 / Δy^2 + β 
@@ -40,8 +29,6 @@ function uniform2d_fractional(q, s, β)
     laplace_mask = fft(laplace_mask)
     zero_order_mask = zeros(n, n)
     zero_order_mask[1, 1] = β
-
-
 
     # the solution oracle
     function ω(A::AbstractVector)
