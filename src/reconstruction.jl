@@ -42,6 +42,7 @@ function reconstruct(pb::ReconstructionProblem, ρ, h=0.5, TreeType=default_tree
         # Performs the measurement
         𝐎 = pb.ω(𝐌)
     end
+    println("Number of measurements used is $(size(𝐌, 2))")
     println("Reconstruction.")
     @time rk = Reconstruction(reconstruct(multicolor_ordering, center.(pb.domains), 𝐌, 𝐎, tree_function))
     return rk

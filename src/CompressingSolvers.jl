@@ -12,6 +12,7 @@ include("utils.jl")
 # exporting functions 
 export uniform2d_dirichlet_fd_poisson
 export uniform2d_periodic_fd_poisson
+export uniform2d_fractional
 export uniform3d_dirichlet_fd_poisson
 export uniform3d_periodic_fd_poisson
 export reconstruct

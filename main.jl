@@ -4,40 +4,38 @@ using LinearAlgebra: Matrix
 using CompressingSolvers
 using SparseArrays
 using LinearAlgebra
+using GLMakie
 
-# # Setting up the test domains
-# ρ = 3
-# # ρ = Inf
-# q = 4
-# 
-# 
-# # pb = uniform2d_dirichlet_fd_poisson(q)
-# # pb = uniform3d_dirichlet_fd_poisson(q)
-# 
+# Setting up the test domains
+ρ = 6
+# ρ = Inf
+q = 7
+
+
+# pb = uniform2d_dirichlet_fd_poisson(q)
+# pb = uniform3d_dirichlet_fd_poisson(q)
+
+pb = uniform2d_fractional(q, 0.50, 1.0)
 # pb = uniform2d_periodic_fd_poisson(q)
-# # pb = uniform2d_dirichlet_fd_poisson(q)
-# 
-# rk = reconstruct(pb, ρ) 
-# 
-# CompressingSolvers.compute_relative_error(rk, pb)
+# pb = uniform2d_dirichlet_fd_poisson(q)
 
-q = 5
-h = 0.5 
-ρ = 5.0
-pb = uniform2d_periodic_fd_poisson(q)
+rk = reconstruct(pb, ρ) 
 
-# This is a part of the reconstruct(::ReconstructionProblem, ρ, h=0.5) wrapper function
-##########
-pb.domains .= pb.domains[randperm(length(pb.domains))]
-TreeType = BallTree
-tree_function(x) = TreeType(x, pb.distance)
-# tree_function(x) = TreeType(x, Euclidean())
-domain_hierarchy = CompressingSolvers.gather_hierarchy(CompressingSolvers.create_hierarchy(pb.domains, h, TreeType))
-aggregation_centers, aggregation_indices = CompressingSolvers.compute_aggregation_centers(CompressingSolvers.center.(pb.domains), 0.05, tree_function)
-clustered_domains = CompressingSolvers.cluster(pb.domains, 0.07125, tree_function) 
-scales = [maximum(CompressingSolvers.approximate_scale(CompressingSolvers.center.(domain_hierarchy[k]), tree_function)) for k = 1 : length(domain_hierarchy)]
-basis_functions = CompressingSolvers.compute_basis_functions(first(domain_hierarchy)) 
-multicolor_ordering = CompressingSolvers.construct_multicolor_ordering(basis_functions, ρ * scales, tree_function)
-##########
+# # Making sure the unpacking-packing doesn't go awry.
+# a = rand(4^q)
+# b = rand(4^q)
+# @show norm(hcat(pb * a, pb * b) - pb * hcat(a, b))
 
-I, J = CompressingSolvers.sparsity_set(multicolor_ordering, CompressingSolvers.center.(pb.domains), tree_function)
+# n = 2 ^ q; N = n^2 
+# h = 1 / n
+# x = 0 : h : (1 - h) 
+# y = 0 : h : (1 - h)
+# rhs = rand(N)
+# wireframe(x, y, 1000 * reshape(pb1 * rhs, n, n))
+# wireframe(x, y, 400 * reshape(pb2 * rhs, n, n))
+# wireframe(x, y, 400 * reshape(rk * rhs, n, n))
+
+# @show norm(pb1 * rhs - pb2 * rhs) / norm(pb1 * rhs)
+# @show norm((pb1 * rhs) / (pb1 * rhs) - (pb2 * rhs) / (pb2 * rhs)) / norm(pb1 * rhs)
+
+CompressingSolvers.compute_relative_error(rk, pb)
