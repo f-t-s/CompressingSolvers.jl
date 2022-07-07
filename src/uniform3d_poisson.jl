@@ -28,21 +28,53 @@ function uniform3d_dirichlet_fd_poisson(q, α = (x, y, z) -> 1.0, β = (x, y, z)
                    lin_inds[i, j, k], 
                    Δx * Δy * Δz) 
         # adding self-interaction 2
-        α_x = α(x[i] + Δx, y[j], z[k]) / Δx^2
-        α_y = α(x[i], y[j] + Δy, z[k]) / Δy^2
-        α_z = α(x[i], y[j], z[k] + Δz) / Δz^2
+        α_x = α(x[i] + Δx / 2, y[j], z[k]) / Δx^2
+        α_y = α(x[i], y[j] + Δy / 2, z[k]) / Δy^2
+        α_z = α(x[i], y[j], z[k] + Δz / 2) / Δz^2
         β_value = β(x[i], y[j], z[k])
 
         # Self interaction 
         push!(col_inds, lin_inds[i, j, k])
         push!(row_inds, lin_inds[i, j, k])
-        push!(S, α_x + α_y + α_z + β_value / 2)
+        push!(S, β_value)
+
+        if i == 1
+            push!(col_inds, lin_inds[i, j, k])
+            push!(row_inds, lin_inds[i, j, k])
+            push!(S, α(x[i] - Δx / 2, y[j], z[k]) / Δx^2)
+        end
 
         # Interaction with next point in x direction
         if i < n 
             push!(col_inds, lin_inds[i, j, k])
             push!(row_inds, lin_inds[i + 1, j, k])
             push!(S, - α_x)
+
+            push!(col_inds, lin_inds[i + 1, j, k])
+            push!(row_inds, lin_inds[i, j, k])
+            push!(S, - α_x)
+
+            # Self interaction 
+            push!(col_inds, lin_inds[i, j, k])
+            push!(row_inds, lin_inds[i, j, k])
+            push!(S, α_x)
+
+            # Self interaction 
+            push!(col_inds, lin_inds[i + 1, j, k])
+            push!(row_inds, lin_inds[i + 1, j, k])
+            push!(S, α_x)
+        else
+            # Self interaction 
+            push!(col_inds, lin_inds[i, j, k])
+            push!(row_inds, lin_inds[i, j, k])
+            push!(S, α_x)
+        end
+
+        # substitute for the missing dof at j=0
+        if j == 1 
+            push!(col_inds, lin_inds[i, j, k])
+            push!(row_inds, lin_inds[i, j, k])
+            push!(S, α(x[i], y[j] - Δy / 2, z[k]) / Δy^2)
         end
 
         # Interaction with next point in y direction
@@ -50,6 +82,32 @@ function uniform3d_dirichlet_fd_poisson(q, α = (x, y, z) -> 1.0, β = (x, y, z)
             push!(col_inds, lin_inds[i, j, k])
             push!(row_inds, lin_inds[i, j + 1, k])
             push!(S, - α_y)
+
+            push!(col_inds, lin_inds[i, j + 1, k])
+            push!(row_inds, lin_inds[i, j, k])
+            push!(S, - α_y)
+
+            # Self interaction 
+            push!(col_inds, lin_inds[i, j, k])
+            push!(row_inds, lin_inds[i, j, k])
+            push!(S, α_y)
+
+            # Self interaction 
+            push!(col_inds, lin_inds[i, j + 1, k])
+            push!(row_inds, lin_inds[i, j + 1, k])
+            push!(S, α_y)
+        else 
+            # Self interaction 
+            push!(col_inds, lin_inds[i, j, k])
+            push!(row_inds, lin_inds[i, j, k])
+            push!(S, α_y)
+        end
+    
+        # substitute for the missing dof at k=0
+        if k == 1 
+            push!(col_inds, lin_inds[i, j, k])
+            push!(row_inds, lin_inds[i, j, k])
+            push!(S, α(x[i], y[j], z[k] - Δz / 2) / Δz^2)
         end
 
         # Interaction with next point in z direction
@@ -57,13 +115,31 @@ function uniform3d_dirichlet_fd_poisson(q, α = (x, y, z) -> 1.0, β = (x, y, z)
             push!(col_inds, lin_inds[i, j, k])
             push!(row_inds, lin_inds[i, j, k + 1])
             push!(S, - α_z)
+
+            push!(col_inds, lin_inds[i, j, k + 1])
+            push!(row_inds, lin_inds[i, j, k])
+            push!(S, - α_z)
+
+            # Self interaction 
+            push!(col_inds, lin_inds[i, j, k])
+            push!(row_inds, lin_inds[i, j, k])
+            push!(S, α_z)
+
+            # Self interaction 
+            push!(col_inds, lin_inds[i, j, k + 1])
+            push!(row_inds, lin_inds[i, j, k + 1])
+            push!(S, α_z)
+        else 
+            # Self interaction 
+            push!(col_inds, lin_inds[i, j, k])
+            push!(row_inds, lin_inds[i, j, k])
+            push!(S, α_z)
         end
     end
 
     # Assembling the sparse matrix
-    L = sparse(row_inds, col_inds, S)
+    A = sparse(row_inds, col_inds, S)
     # Forming the full operator by symmetrization.
-    A = L + L'
     # Returning the problem
     return ReconstructionProblem(domains, Euclidean(), FactorizationOracle(cholesky(A)))
 end 
@@ -100,56 +176,136 @@ function uniform3d_periodic_fd_poisson(q, α = (x, y, z) -> 1.0, β = (x, y, z) 
                    lin_inds[i, j, k], 
                    Δx * Δy * Δz) 
         # adding self-interaction 2
-        α_x = periodic_α(x[i] + Δx, y[j], z[k]) / Δx^2
-        α_y = periodic_α(x[i], y[j] + Δy, z[k]) / Δy^2
-        α_z = periodic_α(x[i], y[j], z[k] + Δz) / Δz^2
+        α_x = periodic_α(x[i] + Δx / 2, y[j], z[k]) / Δx^2
+        α_y = periodic_α(x[i], y[j] + Δy / 2, z[k]) / Δy^2
+        α_z = periodic_α(x[i], y[j], z[k] + Δz / 2) / Δz^2
         β_value = periodic_β(x[i], y[j], z[k])
 
         # Self interaction 
         push!(col_inds, lin_inds[i, j, k])
         push!(row_inds, lin_inds[i, j, k])
-        push!(S, α_x + α_y + α_z + β_value / 2)
+        push!(S, β_value)
 
         # Interaction with next point in x direction
         if i < n 
             push!(col_inds, lin_inds[i, j, k])
             push!(row_inds, lin_inds[i + 1, j, k])
             push!(S, - α_x)
+
+            push!(col_inds, lin_inds[i + 1, j, k])
+            push!(row_inds, lin_inds[i, j, k])
+            push!(S, - α_x)
+
+            # Self interaction 
+            push!(col_inds, lin_inds[i, j, k])
+            push!(row_inds, lin_inds[i, j, k])
+            push!(S, α_x)
+
+            # Self interaction 
+            push!(col_inds, lin_inds[i + 1, j, k])
+            push!(row_inds, lin_inds[i + 1, j, k])
+            push!(S, α_x)
         else
             push!(col_inds, lin_inds[i, j, k])
             push!(row_inds, lin_inds[1, j, k])
             push!(S, - α_x)
-        end
 
+            push!(col_inds, lin_inds[1, j, k])
+            push!(row_inds, lin_inds[i, j, k])
+            push!(S, - α_x)
+
+            # Self interaction 
+            push!(col_inds, lin_inds[i, j, k])
+            push!(row_inds, lin_inds[i, j, k])
+            push!(S, α_x)
+
+            # Self interaction 
+            push!(col_inds, lin_inds[1, j, k])
+            push!(row_inds, lin_inds[1, j, k])
+            push!(S, α_x)
+        end
 
         # Interaction with next point in y direction
         if j < n 
             push!(col_inds, lin_inds[i, j, k])
             push!(row_inds, lin_inds[i, j + 1, k])
             push!(S, - α_y)
+
+            push!(col_inds, lin_inds[i, j + 1, k])
+            push!(row_inds, lin_inds[i, j, k])
+            push!(S, - α_y)
+
+            # Self interaction 
+            push!(col_inds, lin_inds[i, j, k])
+            push!(row_inds, lin_inds[i, j, k])
+            push!(S, α_y)
+
+            # Self interaction 
+            push!(col_inds, lin_inds[i, j + 1, k])
+            push!(row_inds, lin_inds[i, j + 1, k])
+            push!(S, α_y)
         else
             push!(col_inds, lin_inds[i, j, k])
             push!(row_inds, lin_inds[i, 1, k])
             push!(S, - α_y)
+
+            push!(col_inds, lin_inds[i, 1, k])
+            push!(row_inds, lin_inds[i, j, k])
+            push!(S, - α_y)
+
+            # Self interaction 
+            push!(col_inds, lin_inds[i, j, k])
+            push!(row_inds, lin_inds[i, j, k])
+            push!(S, α_y)
+
+            # Self interaction 
+            push!(col_inds, lin_inds[i, 1, k])
+            push!(row_inds, lin_inds[i, 1, k])
+            push!(S, α_y)
         end
-
-
+        
         # Interaction with next point in z direction
         if k < n 
             push!(col_inds, lin_inds[i, j, k])
             push!(row_inds, lin_inds[i, j, k + 1])
             push!(S, - α_z)
+
+            push!(col_inds, lin_inds[i, j, k + 1])
+            push!(row_inds, lin_inds[i, j, k])
+            push!(S, - α_z)
+
+            # Self interaction 
+            push!(col_inds, lin_inds[i, j, k])
+            push!(row_inds, lin_inds[i, j, k])
+            push!(S, α_z)
+
+            # Self interaction 
+            push!(col_inds, lin_inds[i, j, k + 1])
+            push!(row_inds, lin_inds[i, j, k + 1])
+            push!(S, α_z)
         else
             push!(col_inds, lin_inds[i, j, k])
             push!(row_inds, lin_inds[i, j, 1])
             push!(S, - α_z)
+
+            push!(col_inds, lin_inds[i, j, 1])
+            push!(row_inds, lin_inds[i, j, k])
+            push!(S, - α_z)
+
+            # Self interaction 
+            push!(col_inds, lin_inds[i, j, k])
+            push!(row_inds, lin_inds[i, j, k])
+            push!(S, α_z)
+
+            # Self interaction 
+            push!(col_inds, lin_inds[i, j, 1])
+            push!(row_inds, lin_inds[i, j, 1])
+            push!(S, α_z)
         end
     end
 
     # Assembling the sparse matrix
-    L = sparse(row_inds, col_inds, S)
-    # Forming the full operator by symmetrization.
-    A = L + L'
+    A = sparse(row_inds, col_inds, S)
     # Returning the problem
     return ReconstructionProblem(domains, PeriodicEuclidean((1.0, 1.0, 1.0)), FactorizationOracle(cholesky(A)))
 end 
