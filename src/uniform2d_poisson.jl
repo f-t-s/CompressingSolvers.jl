@@ -87,17 +87,17 @@ function uniform2d_dirichlet_fd_poisson(q, α = (x, y) -> 1.0, β = (x, y) -> 0.
             # Self interaction 
             push!(col_inds, lin_inds[i, j])
             push!(row_inds, lin_inds[i, j])
-            push!(S, α_x)
+            push!(S, α_y)
 
             # Self interaction 
             push!(col_inds, lin_inds[i, j + 1])
             push!(row_inds, lin_inds[i, j + 1])
-            push!(S, α_x)
+            push!(S, α_y)
         else 
             # Self interaction 
             push!(col_inds, lin_inds[i, j])
             push!(row_inds, lin_inds[i, j])
-            push!(S, α_x)
+            push!(S, α_y)
         end
     
     end
