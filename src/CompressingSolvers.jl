@@ -19,6 +19,7 @@ export uniform3d_neumann_fd_poisson
 export uniform3d_periodic_fd_poisson
 export uniform3d_fractional
 export gridap_poisson
+export gridap_elasticity
 export reconstruct
 
 end
