@@ -1,6 +1,6 @@
 using Gridap: ReferenceFE, Triangulation, TestFESpace, TrialFESpace, Measure, ∫, ∇, ⋅, ε, tr, ⊙, AffineFEOperator, get_matrix, lagrangian, get_cell_coordinates, get_grid, get_free_dof_ids, DiscreteModelFromFile, VectorValue 
 using Gridap.Io: to_json_file
-using GridapGmsh: GmshDiscreteModel
+# using GridapGmsh: GmshDiscreteModel
 using LinearAlgebra: norm, det, lu!, I
 using StaticArrays: SVector
 # model = GmshDiscreteModel("./gridap_models/demo_refined2.msh")
@@ -16,10 +16,10 @@ using StaticArrays: SVector
 # uh = solve(op)
 # writevtk(Ω,"demo",cellfields=["uh"=>uh])
 
-function gmsh_model_to_json(gmsh_path, json_path)
-    model = GmshDiscreteModel(gmsh_path)
-    to_json_file(model, json_path)
-end
+# function gmsh_model_to_json(gmsh_path, json_path)
+#     model = GmshDiscreteModel(gmsh_path)
+#     to_json_file(model, json_path)
+# end
 
 function get_dof_diameters(grid)
     out = zeros(length(grid.node_coordinates))

@@ -4,3 +4,7 @@
 /docs/build/
 Project.toml
 *.code-workspace
+test/gridap_models/demo-2.json
+test/gridap_models/demo-2.msh
+test/gridap_models/demo-3.json
+test/gridap_models/demo-3.msh
