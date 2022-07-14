@@ -4,7 +4,6 @@ using LinearAlgebra: Matrix
 using CompressingSolvers
 using SparseArrays
 using LinearAlgebra
-using GLMakie
 
 # Setting up the test domains
 ρ = 5
