@@ -1,4 +1,5 @@
-using Gridap: ReferenceFE, Triangulation, TestFESpace, TrialFESpace, Measure, ∫, ∇, ⋅, ε, tr, ⊙, AffineFEOperator, get_matrix, lagrangian, get_cell_coordinates, get_grid, get_free_dof_ids, DiscreteModelFromFile, VectorValue
+using Gridap: ReferenceFE, Triangulation, TestFESpace, TrialFESpace, Measure, ∫, ∇, ⋅, ε, tr, ⊙, AffineFEOperator, get_matrix, lagrangian, get_cell_coordinates, get_grid, get_free_dof_ids, DiscreteModelFromFile, VectorValue 
+using Gridap.Io: to_json_file
 using GridapGmsh: GmshDiscreteModel
 using LinearAlgebra: norm, det, lu!, I
 using StaticArrays: SVector
@@ -14,6 +15,11 @@ using StaticArrays: SVector
 # op = AffineFEOperator(a,l,U,V)
 # uh = solve(op)
 # writevtk(Ω,"demo",cellfields=["uh"=>uh])
+
+function gmsh_model_to_json(gmsh_path, json_path)
+    model = GmshDiscreteModel(gmsh_path)
+    to_json_file(model, json_path)
+end
 
 function get_dof_diameters(grid)
     out = zeros(length(grid.node_coordinates))
@@ -69,8 +75,8 @@ end
 
 # A poisson problem optained from gridap
 function gridap_poisson(path) 
-    model = GmshDiscreteModel(path)
-    # model = DiscreteModelFromFile(path)
+    # model = GmshDiscreteModel(path)
+    model = DiscreteModelFromFile(path)
     order = 1
     reffe = ReferenceFE(lagrangian,Float64,order)
     # The names and number of domains with dirichlet 
