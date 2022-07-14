@@ -1,6 +1,6 @@
 using NearestNeighbors: inrange, nn
 using StaticArrays: SVector
-using Plots: scatter!, plot
+# using Plots: scatter!, plot
 using DataStructures: MutableBinaryMaxHeap, top_with_handle, pop!, update!
 using Distances: Euclidean, PeriodicEuclidean
 
@@ -283,48 +283,48 @@ function gather_hierarchy(coarsest::AbstractVector{<:Domain}, elementary=false)
     return out
 end
 
-function plot_domains(domains::AbstractVector{<:Domain};
-                      xlims=(0.0, 1.0),
-                      ylims=(0.0, 1.0),
-                      ) 
-    @assert length(center(domains[1])) == 2 
-    outplot = plot(; xlims, ylims, aspect_ratio=:equal) 
-    for domain in domains
-        centers = center.(gather_descendants([domain]))
-        x = [centers[k][1] for k in 1 : length(centers)]
-        y = [centers[k][2] for k in 1 : length(centers)]
-        scatter!(outplot, x, y)
-    end
-    return outplot
-end
-
-function plot_domains_periodic(domains::AbstractVector{<:Domain};
-                               xlims=(-1.0, 2.0),
-                               ylims=(-1.0, 2.0),
-                              ) 
-    @assert length(center(domains[1])) == 2 
-    outplot = plot(; xlims, ylims, aspect_ratio=:equal) 
-    for domain in domains
-        centers = center.(gather_descendants([domain]))
-        x = vcat([centers[k][1] + 0 for k in 1 : length(centers)],
-                 [centers[k][1] + 0 for k in 1 : length(centers)],
-                 [centers[k][1] + 0 for k in 1 : length(centers)],
-                 [centers[k][1] + 1 for k in 1 : length(centers)],
-                 [centers[k][1] + 1 for k in 1 : length(centers)],
-                 [centers[k][1] + 1 for k in 1 : length(centers)],
-                 [centers[k][1] - 1 for k in 1 : length(centers)],
-                 [centers[k][1] - 1 for k in 1 : length(centers)],
-                 [centers[k][1] - 1 for k in 1 : length(centers)])
-        y = vcat([centers[k][2] + 0 for k in 1 : length(centers)],
-                 [centers[k][2] + 1 for k in 1 : length(centers)],
-                 [centers[k][2] - 1 for k in 1 : length(centers)],
-                 [centers[k][2] + 0 for k in 1 : length(centers)],
-                 [centers[k][2] + 1 for k in 1 : length(centers)],
-                 [centers[k][2] - 1 for k in 1 : length(centers)],
-                 [centers[k][2] + 0 for k in 1 : length(centers)],
-                 [centers[k][2] + 1 for k in 1 : length(centers)],
-                 [centers[k][2] - 1 for k in 1 : length(centers)])
-        scatter!(outplot, x, y)
-    end
-    return outplot
-end
+# function plot_domains(domains::AbstractVector{<:Domain};
+#                       xlims=(0.0, 1.0),
+#                       ylims=(0.0, 1.0),
+#                       ) 
+#     @assert length(center(domains[1])) == 2 
+#     outplot = plot(; xlims, ylims, aspect_ratio=:equal) 
+#     for domain in domains
+#         centers = center.(gather_descendants([domain]))
+#         x = [centers[k][1] for k in 1 : length(centers)]
+#         y = [centers[k][2] for k in 1 : length(centers)]
+#         scatter!(outplot, x, y)
+#     end
+#     return outplot
+# end
+# 
+# function plot_domains_periodic(domains::AbstractVector{<:Domain};
+#                                xlims=(-1.0, 2.0),
+#                                ylims=(-1.0, 2.0),
+#                               ) 
+#     @assert length(center(domains[1])) == 2 
+#     outplot = plot(; xlims, ylims, aspect_ratio=:equal) 
+#     for domain in domains
+#         centers = center.(gather_descendants([domain]))
+#         x = vcat([centers[k][1] + 0 for k in 1 : length(centers)],
+#                  [centers[k][1] + 0 for k in 1 : length(centers)],
+#                  [centers[k][1] + 0 for k in 1 : length(centers)],
+#                  [centers[k][1] + 1 for k in 1 : length(centers)],
+#                  [centers[k][1] + 1 for k in 1 : length(centers)],
+#                  [centers[k][1] + 1 for k in 1 : length(centers)],
+#                  [centers[k][1] - 1 for k in 1 : length(centers)],
+#                  [centers[k][1] - 1 for k in 1 : length(centers)],
+#                  [centers[k][1] - 1 for k in 1 : length(centers)])
+#         y = vcat([centers[k][2] + 0 for k in 1 : length(centers)],
+#                  [centers[k][2] + 1 for k in 1 : length(centers)],
+#                  [centers[k][2] - 1 for k in 1 : length(centers)],
+#                  [centers[k][2] + 0 for k in 1 : length(centers)],
+#                  [centers[k][2] + 1 for k in 1 : length(centers)],
+#                  [centers[k][2] - 1 for k in 1 : length(centers)],
+#                  [centers[k][2] + 0 for k in 1 : length(centers)],
+#                  [centers[k][2] + 1 for k in 1 : length(centers)],
+#                  [centers[k][2] - 1 for k in 1 : length(centers)])
+#         scatter!(outplot, x, y)
+#     end
+#     return outplot
+# end
