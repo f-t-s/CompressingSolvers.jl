@@ -10,8 +10,8 @@ using GLMakie
 ρ = 5
 # ρ = Inf
 
-# q = 7
-# pb = uniform2d_dirichlet_fd_poisson(q)
+q = 7
+pb = uniform2d_dirichlet_fd_poisson(q)
 # pb = uniform3d_dirichlet_fd_poisson(q)
 
 # pb = uniform2d_neumann_fd_poisson(q)
@@ -20,14 +20,14 @@ using GLMakie
 # pb = uniform2d_periodic_fd_poisson(q)
 # pb = uniform2d_dirichlet_fd_poisson(q)
 
-path = "./gridap_models/demo.msh"
+# path = "./gridap_models/demo.json"
 # path = "./gridap_models/demo_refined.msh"
 # # path = "./gridap_models/model.json"
-# pb, model, A = gridap_poisson(path)
-pb, model, A = gridap_elasticity(path)
+# pb = gridap_poisson(path)
+# pb, model, A = gridap_elasticity(path)
 # 
 # # 
-rk = reconstruct(pb, ρ) 
+rk, log = reconstruct(pb, ρ) 
 # 
 CompressingSolvers.compute_relative_error(rk, pb)
 

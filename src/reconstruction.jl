@@ -22,30 +22,37 @@ end
 
 # A function that takes in a reconstruction problem and returns the Reconstruction
 function reconstruct(pb::ReconstructionProblem, ρ, h=0.5, TreeType=default_tree_type(pb.distance))
-    tree_function(x) = TreeType(x, pb.distance)
-    # create a domain hierarchy 
-    println("Computing domain hierarchy.")
-    @time domain_hierarchy = gather_hierarchy(create_hierarchy(pb.domains, h, TreeType))
-    # compute approximations of the scales on each level
-    scales = [maximum(approximate_scale(center.(domain_hierarchy[k]), tree_function)) for k = 1 : length(domain_hierarchy)]
-    # compute Haar-like bais functions from domain hierarchy 
-    println("Computing basis functions.")
-    @time basis_functions = compute_basis_functions(first(domain_hierarchy)) 
-    # computing the multicolor ordering
-    println("Computing multicolor ordering.")
-    @time multicolor_ordering = construct_multicolor_ordering(basis_functions, ρ * scales, tree_function)
-    # Computing measurements
-    # Forms the measurement matrix
-    println("Measurements")
-    @time begin
+    t_geo = @elapsed begin
+        tree_function(x) = TreeType(x, pb.distance)
+        # create a domain hierarchy 
+        println("Computing domain hierarchy.")
+        @time domain_hierarchy = gather_hierarchy(create_hierarchy(pb.domains, h, TreeType))
+        # compute approximations of the scales on each level
+        scales = [maximum(approximate_scale(center.(domain_hierarchy[k]), tree_function)) for k = 1 : length(domain_hierarchy)]
+        # compute Haar-like bais functions from domain hierarchy 
+        println("Computing basis functions.")
+        @time basis_functions = compute_basis_functions(first(domain_hierarchy)) 
+        # computing the multicolor ordering
+        println("Computing multicolor ordering.")
+        @time multicolor_ordering = construct_multicolor_ordering(basis_functions, ρ * scales, tree_function)
+        # Computing measurements
+        # Forms the measurement matrix
+        println("Measurements")
         𝐌 = form_measurement_matrix(multicolor_ordering)
-        # Performs the measurement
+    end
+    # Performs the measurement
+    t_meas = @elapsed begin
         𝐎 = pb.ω(𝐌)
     end
+    n_meas = size(𝐌, 2)
     println("Number of measurements used is $(size(𝐌, 2))")
     println("Reconstruction.")
-    @time rk = Reconstruction(reconstruct(multicolor_ordering, center.(pb.domains), 𝐌, 𝐎, tree_function))
-    return rk
+    t_rec = @elapsed begin
+        rk = Reconstruction(reconstruct(multicolor_ordering, center.(pb.domains), 𝐌, 𝐎, tree_function))
+    end
+    logs = (t_geo=t_geo, t_meas=t_meas, n_meas=n_meas, t_rec=t_rec)
+
+    return rk, logs
 end 
 
 # function that takes in a multicolor colors and returns the corresponding sparsity sets
