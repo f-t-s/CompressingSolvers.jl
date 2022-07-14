@@ -1,5 +1,59 @@
 import LinearAlgebra: norm, I
-@testset "Laplacian in two-d" begin
+@testset "Uniform Laplacian in 2d" begin
     q = 5
-    A, coarse_domains, scales, basis_functions, multicolor_ordering, fine_domains = CompressingSolvers.FD_Laplacian_subdivision_2d(q)
+    ρ = 7
+
+    pb = uniform2d_dirichlet_fd_poisson(q)
+    rk, ~ = reconstruct(pb, ρ)
+    @test CompressingSolvers.compute_relative_error(rk, pb) ≤ 1e-4
+
+    pb = uniform2d_neumann_fd_poisson(q)
+    rk, ~ = reconstruct(pb, ρ)
+    @test CompressingSolvers.compute_relative_error(rk, pb) ≤ 1e-4
+
+    pb = uniform2d_periodic_fd_poisson(q)
+    rk, ~ = reconstruct(pb, ρ)
+    @test CompressingSolvers.compute_relative_error(rk, pb) ≤ 1e-4
+end
+
+@testset "Uniform Laplacian in 3d" begin
+    q = 4
+    ρ = 4
+
+    pb = uniform3d_dirichlet_fd_poisson(q)
+    rk, ~ = reconstruct(pb, ρ)
+    @test CompressingSolvers.compute_relative_error(rk, pb) ≤ 5e-3
+
+    pb = uniform3d_neumann_fd_poisson(q)
+    rk, ~ = reconstruct(pb, ρ)
+    @test CompressingSolvers.compute_relative_error(rk, pb) ≤ 5e-3
+
+    pb = uniform3d_periodic_fd_poisson(q)
+    rk, ~ = reconstruct(pb, ρ)
+    @test CompressingSolvers.compute_relative_error(rk, pb) ≤ 1e-3
+end
+
+@testset "Uniform fractional Laplacian in 2d" begin
+    q = 5
+    ρ = 7
+
+    pb = uniform2d_fractional(q, 0.5, 1.0)
+    rk, ~ = reconstruct(pb, ρ)
+    @test CompressingSolvers.compute_relative_error(rk, pb) ≤ 1e-4
+end
+
+@testset "Uniform fractional Laplacian in 3d" begin
+    q = 4
+    ρ = 4
+
+    pb = uniform3d_fractional(q, 0.5, 1.0)
+    rk, ~ = reconstruct(pb, ρ)
+    @test CompressingSolvers.compute_relative_error(rk, pb) ≤ 1e-3
+end
+
+@testset "Gridap prolems" begin
+    ρ = 6
+    pb = gridap_poisson("gridap_models/demo.json")
+    rk, ~  = reconstruct(pb, ρ)
+    @test CompressingSolvers.compute_relative_error(rk, pb) ≤ 1e-3
 end

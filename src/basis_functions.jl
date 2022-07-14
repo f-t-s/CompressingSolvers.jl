@@ -28,8 +28,6 @@ function create_basis_vector(id_arrays, weights, N)
     return sparsevec(vcat(id_arrays...), out_weights, N)
 end
 
-
-
 # Input are the coarsest-scale domains
 function compute_basis_functions(domains::AbstractVector{Domain{PT}}, N = maximum(id.(gather_descendants(domains)))) where PT<:AbstractVector{<:Real}
     centers = Vector{Vector{PT}}(undef,1) 

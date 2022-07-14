@@ -26,7 +26,7 @@ function construct_multicolor_ordering(input_array::AbstractVector, ρh::Real, t
         end
         # do furthest point sampling, finish if either the heap is empty, or there are no
         # sufficiently distant points left 
-        while !isempty(heap) && first(heap) > 2 * ρh
+        while !isempty(heap) && (first(heap) == typemax(RT) || first(heap) > 2 * ρh)
             # get the id of the new pivot
             ~, top_id = top_with_handle(heap)
             # remove the new pivot from the heap
@@ -46,7 +46,10 @@ function construct_multicolor_ordering(input_array::AbstractVector, ρh::Real, t
 end
 
 # function that can directly take an array of arrays (corresponding to different scales) as supernodes
+# input are the basis functions 
 function construct_multicolor_ordering(input_arrays::AbstractVector{<:AbstractVector}, ρh::AbstractVector{<:Real}, tree_function)
+    # presently, infinite entries in ρh lead to bugs
+    # @assert all(isfinite.(ρh))
     # Both lengths should be equal to total number of scales
     @assert length(ρh) == length(input_arrays)
     q = length(ρh)

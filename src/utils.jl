@@ -19,3 +19,24 @@ function compute_relative_error(L::SparseMatrixCSC, A::Factorization, max_iter=1
     @show nrm = sum(mapslices(norm, x' * (A \ x), dims = 1)) / number_trials
     return abs(err) / nrm
 end
+
+function compute_relative_error(Ã::Reconstruction, A::ReconstructionProblem, max_iter=100, number_trials=1)
+    N = size(Ã.L, 1)
+    x = randn(N, number_trials)
+    x = x / norm(x)
+    for k = 1 : max_iter
+        x .= Ã * x - A * x
+        x .= x ./ mapslices(norm, x, dims=1)
+        # @show x' * (L * (L' * x) - A \ x)
+    end
+    err = sum(mapslices(norm, x' * (Ã * x - A * x), dims=1)) / number_trials
+    x = randn(N, number_trials)
+    x = x / norm(x)
+    for k = 1 : max_iter
+        x .= A * x
+        x .= x ./ mapslices(norm, x, dims=1)
+        # @show x' * (A \ x)
+    end
+    @show nrm = sum(mapslices(norm, x' * (A * x), dims = 1)) / number_trials
+    return abs(err) / nrm
+end
