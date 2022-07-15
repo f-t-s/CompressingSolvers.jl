@@ -53,7 +53,7 @@ end
 
 @testset "Gridap prolems" begin
     ρ = 6
-    pb = gridap_poisson("gridap_models/demo.json")
+    pb = gridap_poisson("gridap_models/demo-1.json")
     rk, ~  = reconstruct(pb, ρ)
     @test CompressingSolvers.compute_relative_error(rk, pb) ≤ 1e-3
 end
