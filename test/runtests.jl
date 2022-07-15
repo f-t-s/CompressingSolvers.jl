@@ -2,7 +2,6 @@ using LinearAlgebra: Matrix
 using CompressingSolvers
 using LinearAlgebra
 using Test
-using Plots
 
 @testset "CompressingSolvers.jl" begin
     # Write your tests here.

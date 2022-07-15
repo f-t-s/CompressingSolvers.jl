@@ -24,7 +24,6 @@ using Distances: PeriodicEuclidean, Euclidean
         # Test if the partition, on each level, produces the same set of elements
         @test sort(domain_vector, by=CompressingSolvers.id) == sort(CompressingSolvers.gather_descendants(all_domains[k]), by=CompressingSolvers.id)
     end
-    CompressingSolvers.plot_domains(all_domains[1]; xlims=(0.0, 2.0), ylims=(0.0,2.0))
 end
 
 @testset "in 2d, periodic" begin
@@ -53,7 +52,6 @@ end
         # Test if the partition, on each level, produces the same set of elements
         @test sort(domain_vector, by=CompressingSolvers.id) == sort(CompressingSolvers.gather_descendants(all_domains[k]), by=CompressingSolvers.id)
     end
-    CompressingSolvers.plot_domains(all_domains[1]; xlims=(0.0, 2.0), ylims=(0.0,2.0))
 end
 
 
@@ -89,7 +87,6 @@ end
             @test sort(domain_vector, by=CompressingSolvers.id) == sort(CompressingSolvers.gather_descendants(all_domains[k]), by=CompressingSolvers.id)
         end
     end
-    CompressingSolvers.plot_domains(all_domains[1]; xlims=(0.0, 2.0), ylims=(0.0,2.0))
 end
 
 @testset "in 3d" begin
