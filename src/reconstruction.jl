@@ -156,7 +156,7 @@ function reconstruct(ordering, row_centers, measurement_matrix, measurement_resu
                 active_L.nzval[active_L.colptr[k_column] : (active_L.colptr[k_column + 1 ] - 1)] ./= normalization_value
             else  # setting everything to zero and returning the factor as is
                 active_L = active_L[:, 1 : offset]
-                return SparseMatrixCSC(size(L, 1), offset, L.colptr, L.rowval, L.nzval)
+                return SparseMatrixCSC(size(L, 1), offset, active_L.colptr, active_L.rowval, active_L.nzval)
             end
         end
 
