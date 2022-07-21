@@ -26,7 +26,7 @@ function default_tree_type(distance)
 end
 
 # A function that takes in a reconstruction problem and returns the Reconstruction
-function reconstruct(pb::ReconstructionProblem, ρ, h=0.5, TreeType=default_tree_type(pb.distance))
+function reconstruct(pb::ReconstructionProblem, ρ, low_rank_accuracy=0, h=0.5, TreeType=default_tree_type(pb.distance))
     t_geo = @elapsed begin
         tree_function(x) = TreeType(x, pb.distance)
         # create a domain hierarchy 
@@ -53,7 +53,7 @@ function reconstruct(pb::ReconstructionProblem, ρ, h=0.5, TreeType=default_tree
     println("Number of measurements used is $(size(𝐌, 2))")
     println("Reconstruction.")
     t_rec = @elapsed begin
-        rk = Reconstruction(reconstruct(multicolor_ordering, center.(pb.domains), 𝐌, 𝐎, tree_function))
+        rk = Reconstruction(reconstruct(multicolor_ordering, center.(pb.domains), 𝐌, 𝐎, tree_function, low_rank_accuracy))
     end
     logs = (t_geo=t_geo, t_meas=t_meas, n_meas=n_meas, t_rec=t_rec)
 
@@ -119,7 +119,7 @@ function update_active_L(active_nzval, active_colptr, active_rowval, L, color_ra
 end
 
 # ordering is a multicolor ordering of basis functions
-function reconstruct(ordering, row_centers, measurement_matrix, measurement_results, tree_function)
+function reconstruct(ordering, row_centers, measurement_matrix, measurement_results, tree_function, low_rank_accuracy=0)
     @assert length(ordering) == size(measurement_results, 2)
     @time I, J = sparsity_set(ordering, row_centers, tree_function)
     L = sparse(I, J, zeros(eltype(measurement_results), length(I)))
@@ -156,7 +156,7 @@ function reconstruct(ordering, row_centers, measurement_matrix, measurement_resu
         # normalize the column
         for (k_column, basis_function) in zip(color_range, ordering[k])
             dot_value = dot(coefficients(basis_function), view(active_L, :, k_column))
-            if dot_value > 0 #if the pivot is positive, proceed as normal
+            if dot_value > low_rank_accuracy #if the pivot is positive, proceed as normal
                 normalization_value = sqrt(dot_value)
                 active_L.nzval[active_L.colptr[k_column] : (active_L.colptr[k_column + 1 ] - 1)] ./= normalization_value
             else  # setting everything to zero and returning the factor as is
