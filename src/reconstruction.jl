@@ -8,6 +8,11 @@ struct Reconstruction
     L::SparseMatrixCSC
 end
 
+import Base.Matrix
+function Matrix(rk:: Reconstruction)
+    return Matrix(rk.L) * Matrix(rk.L)'
+end
+
 function *(rc::Reconstruction, v)
     return rc.L * (rc.L' * v)
 end
