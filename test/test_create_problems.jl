@@ -4,7 +4,7 @@ import Distances: pairwise
     N = 5000
     distance = PeriodicEuclidean((N,))
     x = Float64.(Matrix(collect(0 : N-1)'))
-    A = exp.(-abs.(pairwise(distance, x)) / (N / 10))
+    A = exp.(-abs.(pairwise(distance, x, dims=2)) / (N / 10))
     pb = CompressingSolvers.matrix_problem(A, x, distance)
     rk, info = reconstruct(pb, 5.0)
     @test CompressingSolvers.compute_relative_error(rk, pb) ≤ 1e-3
