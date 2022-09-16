@@ -3,8 +3,7 @@ using FFTW: fft, ifft
 
 # q is the number of levels of the subdivision
 # The operator being inverted is u ↦ ((-Δ)²ˢu + βu)
-function uniform2d_fractional(q, s, β)
-    n = 2 ^ q 
+function uniform2d_fractional(n, s, β)
     N = n^2 
     Δx = Δy = 1 / n
     x = 0 : Δx : (1 - Δx) 
@@ -61,11 +60,10 @@ end
 # # α is only called once on each location, meaning that it can be a random function
 # # β is the zeroth order term of the system 
 # # β(x) returns the zero order term in the location x.
-# function uniform2d_periodic_fd_poisson(q, α = (x, y) -> 1.0, β = (x, y) -> 1.0)
+# function uniform2d_periodic_fd_poisson(n, α = (x, y) -> 1.0, β = (x, y) -> 1.0)
 #     # Accounting for periodicity 
 #     periodic_α(x, y) = α(div(x, 1), div(y, 1))
 #     periodic_β(x, y) = β(div(x, 1), div(y, 1))
-#     n = 2 ^ q 
 #     N = n^2 
 #     Δx = Δy = 1 / n
 #     x = 0 : Δx : (1 - Δx) 

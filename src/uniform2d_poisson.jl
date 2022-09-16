@@ -4,8 +4,7 @@
 # α is only called once on each location, meaning that it can be a random function
 # β is the zeroth order term of the system 
 # β(x) returns the zero order term in the location x.
-function uniform2d_dirichlet_fd_poisson(q, α = (x, y) -> 1.0, β = (x, y) -> 0.0)
-    n = 2 ^ q 
+function uniform2d_dirichlet_fd_poisson(n, α = (x, y) -> 1.0, β = (x, y) -> 0.0)
     N = n^2 
     Δx = Δy = 1 / (n + 1)
     x = Δx : Δx : (1 - Δx)
@@ -114,8 +113,7 @@ end
 # α is only called once on each location, meaning that it can be a random function
 # β is the zeroth order term of the system 
 # β(x) returns the zero order term in the location x.
-function uniform2d_neumann_fd_poisson(q, α = (x, y) -> 1.0, β = (x, y) -> 1.0)
-    n = 2 ^ q 
+function uniform2d_neumann_fd_poisson(n, α = (x, y) -> 1.0, β = (x, y) -> 1.0)
     N = n^2 
     Δx = Δy = 1 / (n + 1)
     x = Δx : Δx : (1 - Δx)
@@ -200,11 +198,10 @@ end
 # α is only called once on each location, meaning that it can be a random function
 # β is the zeroth order term of the system 
 # β(x) returns the zero order term in the location x.
-function uniform2d_periodic_fd_poisson(q, α = (x, y) -> 1.0, β = (x, y) -> 1.0)
+function uniform2d_periodic_fd_poisson(n, α = (x, y) -> 1.0, β = (x, y) -> 1.0)
     # Accounting for periodicity 
     periodic_α(x, y) = α(div(x, 1), div(y, 1))
     periodic_β(x, y) = β(div(x, 1), div(y, 1))
-    n = 2 ^ q 
     N = n^2 
     Δx = Δy = 1 / n
     x = 0 : Δx : (1 - Δx) 

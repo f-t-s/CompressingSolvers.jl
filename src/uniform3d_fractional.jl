@@ -1,8 +1,7 @@
 
 # q is the number of levels of the subdivision
 # The operator being inverted is u ↦ ((-Δ)²ˢu + βu)
-function uniform3d_fractional(q, s, β)
-    n = 2 ^ q 
+function uniform3d_fractional(n, s, β)
     N = n^3 
     Δx = Δy = Δz = 1 / n
     x = 0 : Δx : (1 - Δx)

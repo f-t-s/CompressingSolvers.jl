@@ -1,8 +1,8 @@
 @testset "on dirichlet conditions" begin
-    q = 5
+    n = 2 ^ 5
     h = 0.5
     ρ = 5.0
-    pb = uniform2d_dirichlet_fd_poisson(q)
+    pb = uniform2d_dirichlet_fd_poisson(n)
 
     # This is a part of the reconstruct(::ReconstructionProblem, ρ, h=0.5) wrapper function
     ##########
@@ -19,10 +19,10 @@
 end
 
 @testset "on periodic conditions" begin
-    q = 5
+    n = 2 ^ 5
     h = 0.5 
     ρ = 5.0
-    pb = uniform2d_periodic_fd_poisson(q)
+    pb = uniform2d_periodic_fd_poisson(n)
 
     # This is a part of the reconstruct(::ReconstructionProblem, ρ, h=0.5) wrapper function
     ##########

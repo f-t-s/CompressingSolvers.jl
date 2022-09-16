@@ -9,15 +9,15 @@ using LinearAlgebra
 ρ = 5
 # ρ = Inf
 
-q = 7
-pb = uniform2d_dirichlet_fd_poisson(q)
-# pb = uniform3d_dirichlet_fd_poisson(q)
+n = 2^7
+pb = uniform2d_dirichlet_fd_poisson(n)
+# pb = uniform3d_dirichlet_fd_poisson(n)
 
-# pb = uniform2d_neumann_fd_poisson(q)
+# pb = uniform2d_neumann_fd_poisson(n)
 
-# pb = uniform2d_fractional(q, 0.50, 1.0)
-# pb = uniform2d_periodic_fd_poisson(q)
-# pb = uniform2d_dirichlet_fd_poisson(q)
+# pb = uniform2d_fractional(n, 0.50, 1.0)
+# pb = uniform2d_periodic_fd_poisson(n)
+# pb = uniform2d_dirichlet_fd_poisson(n)
 
 # path = "./gridap_models/demo.json"
 # path = "./gridap_models/demo_refined.msh"

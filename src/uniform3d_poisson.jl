@@ -4,8 +4,7 @@
 # α is only called once on each location, meaning that it can be a random function
 # β is the zeroth order term of the system 
 # β(x) returns the zero order term in the location x.
-function uniform3d_dirichlet_fd_poisson(q, α = (x, y, z) -> 1.0, β = (x, y, z) -> 0.0)
-    n = 2 ^ q 
+function uniform3d_dirichlet_fd_poisson(n, α = (x, y, z) -> 1.0, β = (x, y, z) -> 0.0)
     N = n^3 
     Δx = Δy = Δz = 1 / (n + 1)
     x = Δx : Δx : (1 - Δx)
@@ -150,8 +149,7 @@ end
 # α is only called once on each location, meaning that it can be a random function
 # β is the zeroth order term of the system 
 # β(x) returns the zero order term in the location x.
-function uniform3d_neumann_fd_poisson(q, α = (x, y, z) -> 1.0, β = (x, y, z) -> 1.0)
-    n = 2 ^ q 
+function uniform3d_neumann_fd_poisson(n, α = (x, y, z) -> 1.0, β = (x, y, z) -> 1.0)
     N = n^3 
     Δx = Δy = Δz = 1 / (n + 1)
     x = Δx : Δx : (1 - Δx)
@@ -261,10 +259,9 @@ end
 # α is only called once on each location, meaning that it can be a random function
 # β is the zeroth order term of the system 
 # β(x) returns the zero order term in the location x.
-function uniform3d_periodic_fd_poisson(q, α = (x, y, z) -> 1.0, β = (x, y, z) -> 1.0)
+function uniform3d_periodic_fd_poisson(n, α = (x, y, z) -> 1.0, β = (x, y, z) -> 1.0)
     periodic_α(x, y, z) = α(div(x, 1), div(y, 1), div(z, 1))
     periodic_β(x, y, z) = β(div(x, 1), div(y, 1), div(z, 1))
-    n = 2 ^ q 
     N = n^3 
     Δx = Δy = Δz = 1 / n
     x = 0 : Δx : (1 - Δx)

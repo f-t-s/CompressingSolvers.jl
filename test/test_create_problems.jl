@@ -11,53 +11,53 @@ import Distances: pairwise
 end
 
 @testset "Uniform Laplacian in 2d" begin
-    q = 5
+    n = 2 ^ 5
     ρ = 7
 
-    pb = uniform2d_dirichlet_fd_poisson(q)
+    pb = uniform2d_dirichlet_fd_poisson(n)
     rk, ~ = reconstruct(pb, ρ)
     @test CompressingSolvers.compute_relative_error(rk, pb) ≤ 1e-4
 
-    pb = uniform2d_neumann_fd_poisson(q)
+    pb = uniform2d_neumann_fd_poisson(n)
     rk, ~ = reconstruct(pb, ρ)
     @test CompressingSolvers.compute_relative_error(rk, pb) ≤ 1e-4
 
-    pb = uniform2d_periodic_fd_poisson(q)
+    pb = uniform2d_periodic_fd_poisson(n)
     rk, ~ = reconstruct(pb, ρ)
     @test CompressingSolvers.compute_relative_error(rk, pb) ≤ 1e-4
 end
 
 @testset "Uniform Laplacian in 3d" begin
-    q = 4
+    n = 2 ^ 4
     ρ = 4
 
-    pb = uniform3d_dirichlet_fd_poisson(q)
+    pb = uniform3d_dirichlet_fd_poisson(n)
     rk, ~ = reconstruct(pb, ρ)
     @test CompressingSolvers.compute_relative_error(rk, pb) ≤ 5e-3
 
-    pb = uniform3d_neumann_fd_poisson(q)
+    pb = uniform3d_neumann_fd_poisson(n)
     rk, ~ = reconstruct(pb, ρ)
     @test CompressingSolvers.compute_relative_error(rk, pb) ≤ 5e-3
 
-    pb = uniform3d_periodic_fd_poisson(q)
+    pb = uniform3d_periodic_fd_poisson(n)
     rk, ~ = reconstruct(pb, ρ)
     @test CompressingSolvers.compute_relative_error(rk, pb) ≤ 1e-3
 end
 
 @testset "Uniform fractional Laplacian in 2d" begin
-    q = 5
+    n = 2^5
     ρ = 7
 
-    pb = uniform2d_fractional(q, 0.5, 1.0)
+    pb = uniform2d_fractional(n, 0.5, 1.0)
     rk, ~ = reconstruct(pb, ρ)
     @test CompressingSolvers.compute_relative_error(rk, pb) ≤ 1e-4
 end
 
 @testset "Uniform fractional Laplacian in 3d" begin
-    q = 4
+    n = 2 ^ 4
     ρ = 4
 
-    pb = uniform3d_fractional(q, 0.5, 1.0)
+    pb = uniform3d_fractional(n, 0.5, 1.0)
     rk, ~ = reconstruct(pb, ρ)
     @test CompressingSolvers.compute_relative_error(rk, pb) ≤ 1e-3
 end
